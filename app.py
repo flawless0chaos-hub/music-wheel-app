@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from r2_manager import R2Manager
 import os
+import re
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -23,6 +24,23 @@ except Exception as e:
     print("   - R2_BUCKET_NAME (optional, defaults to 'music-wheel')")
     print("   - R2_PUBLIC_URL (optional)")
     storage_manager = None
+
+
+# ===============================
+# Helper Functions
+# ===============================
+
+def extract_youtube_id(url):
+    """Extract YouTube video ID from URL"""
+    patterns = [
+        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
+        r'youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
 
 
 # ===============================
@@ -97,6 +115,7 @@ def init_album():
         album_name = data.get('album')
         track_count = data.get('trackCount', 8)
         styles = data.get('styles', ['Rock', 'Funk', 'Hip Hop', 'Blues', 'Theatrical'])
+        use_transitions = data.get('useTransitions', False)
         
         if not album_name:
             return jsonify({'status': 'error', 'message': 'Album name required'}), 400
@@ -104,8 +123,11 @@ def init_album():
         print(f"\n🎵 Initializing album: {album_name}")
         print(f"📊 Tracks: {track_count}")
         print(f"🎨 Styles: {styles}")
+        print(f"🔄 Transitions: {'Yes' if use_transitions else 'No'}")
         
-        album_id = storage_manager.initialize_album_structure(album_name, track_count, styles)
+        album_id = storage_manager.initialize_album_structure(
+            album_name, track_count, styles, use_transitions
+        )
         
         return jsonify({
             'status': 'success',
@@ -122,7 +144,7 @@ def init_album():
 
 @app.route('/api/upload/track', methods=['POST'])
 def upload_track():
-    """Upload track files to R2 storage"""
+    """Upload track files or YouTube links to R2 storage"""
     try:
         if not storage_manager:
             return jsonify({'status': 'error', 'message': 'Storage not initialized'}), 500
@@ -157,7 +179,42 @@ def upload_track():
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
         
-        # Process all style files
+        # Process all style files (can be files OR YouTube links)
+        for key in request.form:
+            if key in ['album', 'number', 'name', 'artist']:
+                continue
+            
+            # Check if it's a YouTube link
+            if key.startswith('youtube_'):
+                youtube_url = request.form[key]
+                if not youtube_url:
+                    continue
+                
+                video_id = extract_youtube_id(youtube_url)
+                if not video_id:
+                    print(f"  ⚠️  Invalid YouTube URL: {youtube_url}")
+                    continue
+                
+                # Parse key: "youtube_track_rock", "youtube_transition_rock"
+                parts = key.split('_')[1:]  # Remove 'youtube_' prefix
+                
+                if parts[0] == 'track':
+                    style_key = '_'.join(parts[1:])
+                    file_type = 'audio'
+                elif parts[0] == 'transition':
+                    style_key = '_'.join(parts[1:])
+                    file_type = 'transition_audio'
+                else:
+                    continue
+                
+                # Store YouTube video ID
+                url = storage_manager.store_youtube_link(
+                    album_name, track_number, file_type, style_key, video_id
+                )
+                uploaded_files.append(f"{key}: {url}")
+                print(f"  ✅ YouTube link stored: {key}")
+        
+        # Process uploaded files
         for key in request.files:
             if key == 'icon':
                 continue
@@ -170,20 +227,16 @@ def upload_track():
             parts = key.split('_')
             
             if parts[0] == 'track':
-                # track_rock.mp3
                 style_key = '_'.join(parts[1:])
                 file_type = 'audio'
             elif parts[0] == 'lyrics':
-                # lyrics_rock.txt
                 style_key = '_'.join(parts[1:])
                 file_type = 'lyrics'
             elif parts[0] == 'transition':
                 if parts[1] == 'lyrics':
-                    # transition_lyrics_rock.txt
                     style_key = '_'.join(parts[2:])
                     file_type = 'transition_lyrics'
                 else:
-                    # transition_rock.mp3
                     style_key = '_'.join(parts[1:])
                     file_type = 'transition_audio'
             else:
@@ -204,7 +257,7 @@ def upload_track():
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
         
-        print(f"✅ Track {track_number} upload complete: {len(uploaded_files)} files")
+        print(f"✅ Track {track_number} upload complete: {len(uploaded_files)} items")
         
         return jsonify({
             'status': 'success',
@@ -216,6 +269,50 @@ def upload_track():
         print(f"Error uploading track: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/social/like', methods=['POST'])
+def add_like():
+    """Add or remove a like"""
+    try:
+        data = request.json
+        album_name = data.get('album')
+        track_number = data.get('track')
+        user_id = data.get('userId', 'anonymous')
+        
+        result = storage_manager.toggle_like(album_name, track_number, user_id)
+        return jsonify({'status': 'success', 'liked': result['liked'], 'count': result['count']})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/social/comment', methods=['POST'])
+def add_comment():
+    """Add a comment"""
+    try:
+        data = request.json
+        album_name = data.get('album')
+        track_number = data.get('track')
+        user_name = data.get('userName', 'Anonymous')
+        comment_text = data.get('comment')
+        
+        result = storage_manager.add_comment(album_name, track_number, user_name, comment_text)
+        return jsonify({'status': 'success', 'comment': result})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/social/comments', methods=['GET'])
+def get_comments():
+    """Get all comments for a track"""
+    try:
+        album_name = request.args.get('album')
+        track_number = int(request.args.get('track'))
+        
+        comments = storage_manager.get_comments(album_name, track_number)
+        return jsonify({'status': 'success', 'comments': comments})
+    except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -244,7 +341,7 @@ if __name__ == '__main__':
     print("\n" + "=" * 50)
     print("🎵 Music Wheel Manager Starting...")
     print("=" * 50)
-    print(f"\n📍 Port: {port}")
+    print(f"\n🔌 Port: {port}")
     print(f"🔧 Debug Mode: {debug_mode}")
     print(f"☁️  Storage: Cloudflare R2")
     print("\n" + "=" * 50 + "\n")
