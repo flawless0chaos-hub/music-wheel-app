@@ -3,11 +3,12 @@ from botocore.client import Config
 import os
 import json
 import io
+from datetime import datetime
 
 class R2Manager:
     """
     Cloudflare R2 Storage Manager
-    Replaces Google Drive for file storage
+    Enhanced with YouTube support, social features, and dynamic categories
     """
     
     def __init__(self):
@@ -55,27 +56,35 @@ class R2Manager:
             return f"{track_folder}/track_info.json"
         elif file_type == 'album_metadata':
             return f"albums/{album_name}/album_metadata.json"
+        elif file_type == 'social_data':
+            return f"{track_folder}/social_data.json"
         else:
             raise Exception(f"Unknown file type: {file_type}")
     
-    def initialize_album_structure(self, album_name, track_count, styles):
-        """Create album structure in R2"""
+    def initialize_album_structure(self, album_name, track_count, styles, use_transitions=False):
+        """Create album structure in R2 with dynamic categories"""
         try:
             print("\n" + "=" * 50)
             print(f"🎵 Initializing Album: {album_name}")
             print(f"📊 Tracks: {track_count}")
             print(f"🎨 Styles: {len(styles)}")
+            print(f"🔄 Transitions: {'Enabled' if use_transitions else 'Disabled'}")
             print("=" * 50 + "\n")
             
             # Create album metadata
             album_metadata = {
                 "album_name": album_name,
                 "track_count": track_count,
+                "use_transitions": use_transitions,
                 "styles": []
             }
             
             # Add styles with colors
-            default_colors = ['#d13b3b', '#9b3480', '#513c99', '#2373a1', '#1da9a0']
+            default_colors = [
+                '#d13b3b', '#9b3480', '#513c99', '#2373a1', '#1da9a0',
+                '#25a56a', '#c6a527', '#d96c27', '#c73a63', '#7c4199'
+            ]
+            
             for idx, style_name in enumerate(styles):
                 album_metadata["styles"].append({
                     "name": style_name,
@@ -100,16 +109,36 @@ class R2Manager:
                 
                 for style in styles:
                     style_key = style.lower().replace(' ', '_')
-                    track_info["styles"][style_key] = {
+                    style_data = {
                         "audio_url": "",
+                        "audio_type": "file",  # 'file' or 'youtube'
+                        "youtube_id": "",
                         "lyrics_url": "",
-                        "transition_audio_url": "",
-                        "transition_lyrics_url": "",
                         "uploaded": False
                     }
+                    
+                    if use_transitions:
+                        style_data.update({
+                            "transition_audio_url": "",
+                            "transition_audio_type": "file",
+                            "transition_youtube_id": "",
+                            "transition_lyrics_url": ""
+                        })
+                    
+                    track_info["styles"][style_key] = style_data
+                
+                # Initialize social data
+                social_data = {
+                    "likes": [],
+                    "like_count": 0,
+                    "comments": []
+                }
                 
                 track_path = self._get_file_path(album_name, i, 'track_info')
+                social_path = self._get_file_path(album_name, i, 'social_data')
+                
                 self._upload_json(track_info, track_path)
+                self._upload_json(social_data, social_path)
                 print(f"📁 Created Track_{i:02d}")
             
             print(f"\n✅ Album '{album_name}' initialized successfully!\n")
@@ -156,6 +185,38 @@ class R2Manager:
         except Exception as e:
             raise Exception(f"Error updating metadata: {e}")
     
+    def store_youtube_link(self, album_name, track_number, file_type, style_key, video_id):
+        """Store YouTube video ID as audio source"""
+        try:
+            track_info_path = self._get_file_path(album_name, track_number, 'track_info')
+            track_info = self._download_json(track_info_path)
+            
+            if not track_info:
+                raise Exception("track_info.json not found")
+            
+            youtube_url = f"https://www.youtube.com/watch?v={video_id}"
+            
+            if style_key not in track_info['styles']:
+                track_info['styles'][style_key] = {}
+            
+            if file_type == 'audio':
+                track_info['styles'][style_key]['audio_url'] = youtube_url
+                track_info['styles'][style_key]['audio_type'] = 'youtube'
+                track_info['styles'][style_key]['youtube_id'] = video_id
+                track_info['styles'][style_key]['uploaded'] = True
+            elif file_type == 'transition_audio':
+                track_info['styles'][style_key]['transition_audio_url'] = youtube_url
+                track_info['styles'][style_key]['transition_audio_type'] = 'youtube'
+                track_info['styles'][style_key]['transition_youtube_id'] = video_id
+            
+            self._upload_json(track_info, track_info_path)
+            print(f"  ✅ YouTube link stored: {video_id}")
+            
+            return youtube_url
+            
+        except Exception as e:
+            raise Exception(f"Error storing YouTube link: {e}")
+    
     def upload_track_file(self, album_name, track_number, file_type, style_key, file_path):
         """Upload a file to R2"""
         try:
@@ -196,6 +257,7 @@ class R2Manager:
                     if style_key not in track_info['styles']:
                         track_info['styles'][style_key] = {}
                     track_info['styles'][style_key]['audio_url'] = file_url
+                    track_info['styles'][style_key]['audio_type'] = 'file'
                     track_info['styles'][style_key]['uploaded'] = True
                 elif file_type == 'lyrics':
                     if style_key not in track_info['styles']:
@@ -205,6 +267,7 @@ class R2Manager:
                     if style_key not in track_info['styles']:
                         track_info['styles'][style_key] = {}
                     track_info['styles'][style_key]['transition_audio_url'] = file_url
+                    track_info['styles'][style_key]['transition_audio_type'] = 'file'
                 elif file_type == 'transition_lyrics':
                     if style_key not in track_info['styles']:
                         track_info['styles'][style_key] = {}
@@ -218,6 +281,71 @@ class R2Manager:
         except Exception as e:
             raise Exception(f"Error uploading file: {e}")
     
+    def toggle_like(self, album_name, track_number, user_id):
+        """Toggle like for a track"""
+        try:
+            social_path = self._get_file_path(album_name, track_number, 'social_data')
+            social_data = self._download_json(social_path)
+            
+            if not social_data:
+                social_data = {"likes": [], "like_count": 0, "comments": []}
+            
+            if user_id in social_data['likes']:
+                social_data['likes'].remove(user_id)
+                liked = False
+            else:
+                social_data['likes'].append(user_id)
+                liked = True
+            
+            social_data['like_count'] = len(social_data['likes'])
+            
+            self._upload_json(social_data, social_path)
+            
+            return {'liked': liked, 'count': social_data['like_count']}
+            
+        except Exception as e:
+            raise Exception(f"Error toggling like: {e}")
+    
+    def add_comment(self, album_name, track_number, user_name, comment_text):
+        """Add a comment to a track"""
+        try:
+            social_path = self._get_file_path(album_name, track_number, 'social_data')
+            social_data = self._download_json(social_path)
+            
+            if not social_data:
+                social_data = {"likes": [], "like_count": 0, "comments": []}
+            
+            comment = {
+                "id": len(social_data['comments']) + 1,
+                "user": user_name,
+                "text": comment_text,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            social_data['comments'].append(comment)
+            
+            self._upload_json(social_data, social_path)
+            
+            return comment
+            
+        except Exception as e:
+            raise Exception(f"Error adding comment: {e}")
+    
+    def get_comments(self, album_name, track_number):
+        """Get all comments for a track"""
+        try:
+            social_path = self._get_file_path(album_name, track_number, 'social_data')
+            social_data = self._download_json(social_path)
+            
+            if not social_data:
+                return []
+            
+            return social_data.get('comments', [])
+            
+        except Exception as e:
+            print(f"Error getting comments: {e}")
+            return []
+    
     def load_album_data(self, album_name):
         """Load complete album data"""
         try:
@@ -230,14 +358,17 @@ class R2Manager:
             
             album_styles = album_metadata.get('styles', [])
             track_count = album_metadata.get('track_count', 8)
+            use_transitions = album_metadata.get('use_transitions', False)
             
             print(f"✅ Loaded album: {album_name}")
             print(f"📊 Styles: {len(album_styles)}")
+            print(f"🔄 Transitions: {'Yes' if use_transitions else 'No'}")
             
             album_data = {
                 'albumName': album_name,
                 'artist': 'Various Artists',
                 'styles': album_styles,
+                'useTransitions': use_transitions,
                 'tracks': {},
                 'transitions': {}
             }
@@ -247,6 +378,10 @@ class R2Manager:
                 track_path = self._get_file_path(album_name, i, 'track_info')
                 track_info = self._download_json(track_path)
                 
+                # Load social data
+                social_path = self._get_file_path(album_name, i, 'social_data')
+                social_data = self._download_json(social_path)
+                
                 if track_info:
                     track_num = track_info['track_number']
                     
@@ -255,16 +390,27 @@ class R2Manager:
                         'name': track_info.get('track_name', f'Track {track_num}'),
                         'artist': track_info.get('artist_name', 'Unknown Artist'),
                         'icon': track_info.get('icon_url'),
-                        'styles': {}
+                        'styles': {},
+                        'social': {
+                            'likes': social_data.get('like_count', 0) if social_data else 0,
+                            'comments': len(social_data.get('comments', [])) if social_data else 0
+                        }
                     }
                     
                     for style_key, style_data in track_info.get('styles', {}).items():
                         if style_data.get('audio_url'):
                             track_data['styles'][style_key] = {
                                 'url': style_data['audio_url'],
+                                'type': style_data.get('audio_type', 'file'),
+                                'youtube_id': style_data.get('youtube_id', ''),
                                 'lyrics_url': style_data.get('lyrics_url'),
                                 'uploaded': True
                             }
+                            
+                            if use_transitions:
+                                track_data['styles'][style_key]['transition_url'] = style_data.get('transition_audio_url', '')
+                                track_data['styles'][style_key]['transition_type'] = style_data.get('transition_audio_type', 'file')
+                                track_data['styles'][style_key]['transition_lyrics_url'] = style_data.get('transition_lyrics_url', '')
                     
                     album_data['tracks'][str(track_num)] = track_data
                     print(f"  ✅ Track {i}")
