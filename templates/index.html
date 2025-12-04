@@ -1,920 +1,905 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Wheel Player</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary-bg: #0a0e1a;
+            --secondary-bg: rgba(255, 255, 255, 0.05);
+            --accent-color: #00d4ff;
+            --text-color: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --bubble-bg: rgba(255, 255, 255, 0.12);
+            --bubble-hover: rgba(255, 255, 255, 0.18);
         }
 
         body {
-            font-family: 'Rubik', sans-serif;
-            background: #0a0a0a;
-            color: #FFFFFF;
-            overflow: hidden;
-            position: fixed;
-            width: 100%;
-            height: 100vh;
+            font-family: 'Heebo', 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f35 100%);
+            color: var(--text-color);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        /* ===== TOP SECTION (22vh) ===== */
-        .top-section {
+        /* ==================== Container ==================== */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ==================== Info Bubbles (Top) ==================== */
+        .info-section {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0 50px 0;
+            perspective: 1000px;
+        }
+
+        .info-bubble {
+            background: var(--bubble-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            padding: 15px 30px;
+            border: none;
+            color: var(--text-color);
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.5;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            cursor: default;
+            min-width: 120px;
+            max-width: 200px;
+        }
+
+        .info-bubble:hover {
+            background: var(--bubble-hover);
+            transform: translateY(-5px) scale(1.05);
+        }
+
+        /* Magnetic effect for bubbles */
+        .info-bubble.magnetic {
+            transform: translate(var(--mouse-x, 0px), var(--mouse-y, 0px)) scale(1.02);
+        }
+
+        /* ==================== Wheel Container ==================== */
+        .wheel-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            margin: 0 auto;
+        }
+
+        /* Main Wheel */
+        .wheel {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            transition: transform 0.5s ease;
+        }
+
+        /* Wheel Rings */
+        .wheel-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .wheel-ring:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.02);
+        }
+
+        /* Track Dots on Rings */
+        .track-dot {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .track-dot:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.15);
+        }
+
+        .track-dot.active {
+            background: white;
+            transform: scale(1.2);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+        }
+
+        /* Play/Pause Icon in Active Dot */
+        .play-icon {
+            width: 0;
+            height: 0;
+            border-left: 12px solid #000;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            margin-left: 3px;
+            display: none;
+        }
+
+        .pause-icon {
+            width: 12px;
+            height: 16px;
+            display: none;
+            position: relative;
+        }
+
+        .pause-icon::before,
+        .pause-icon::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background: #000;
+        }
+
+        .pause-icon::before {
+            left: 0;
+        }
+
+        .pause-icon::after {
+            right: 0;
+        }
+
+        .track-dot.active .play-icon,
+        .track-dot.active.playing .pause-icon {
+            display: block;
+        }
+
+        .track-dot.active.playing .play-icon {
+            display: none;
+        }
+
+        /* ==================== Control Bubbles (Bottom) ==================== */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 50px;
+        }
+
+        .control-bubble {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--bubble-bg);
+            backdrop-filter: blur(10px);
+            border: none;
+            color: var(--text-color);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-bubble:hover {
+            background: var(--bubble-hover);
+            transform: scale(1.1);
+        }
+
+        .control-bubble:active {
+            transform: scale(0.95);
+        }
+
+        /* Volume Slider Tongue */
+        .volume-container {
+            position: relative;
+        }
+
+        .volume-slider {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            transform-origin: bottom;
+            background: var(--bubble-bg);
+            backdrop-filter: blur(15px);
+            padding: 20px 15px;
+            border-radius: 25px;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+
+        .volume-slider.active {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .volume-slider input[type="range"] {
+            -webkit-appearance: none;
+            width: 150px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            transform: rotate(-90deg);
+        }
+
+        .volume-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Lyrics Panel */
+        .lyrics-container {
+            position: relative;
+        }
+
+        .lyrics-panel {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            transform-origin: bottom;
+            background: var(--bubble-bg);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            border-radius: 20px;
+            min-width: 300px;
+            max-width: 400px;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .lyrics-panel.active {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .lyrics-text {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        /* Category Bubbles Container */
+        .categories-container {
+            position: relative;
+        }
+
+        .category-bubbles {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .category-bubbles.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .category-bubble {
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform: scale(0);
+            animation: bubblePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .category-bubble:nth-child(1) { animation-delay: 0.05s; }
+        .category-bubble:nth-child(2) { animation-delay: 0.1s; }
+        .category-bubble:nth-child(3) { animation-delay: 0.15s; }
+        .category-bubble:nth-child(4) { animation-delay: 0.2s; }
+        .category-bubble:nth-child(5) { animation-delay: 0.25s; }
+
+        @keyframes bubblePop {
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .category-bubble:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+
+        /* Social Section */
+        .social-section {
+            margin-top: 50px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .social-bubble {
+            background: var(--bubble-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .social-bubble:hover {
+            background: var(--bubble-hover);
+            transform: translateY(-3px);
+        }
+
+        .social-bubble.liked {
+            background: rgba(255, 107, 107, 0.2);
+        }
+
+        .comments-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--primary-bg);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .comments-modal.active {
+            display: block;
+        }
+
+        .modal-overlay {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            height: 22vh;
-            padding: 10px 15px;
-            background: transparent;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
         }
 
-        /* Selector Row */
-        .selector-row {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .album-selector {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .album-dropdown {
-            width: 180px;
-            height: 30px;
-            padding: 0 10px;
-            background: rgba(40, 40, 40, 0.95);
-            border: 1.5px solid rgba(255, 255, 255, 0.2);
-            border-radius: 18px;
-            color: white;
-            font-size: 10px;
-            font-weight: 500;
-            text-align: center;
-            cursor: pointer;
-            outline: none;
-            -webkit-appearance: none;
-            position: relative;
-            z-index: 10;
-        }
-
-        .album-dropdown option {
-            background: #1a1a1a;
-            color: white;
-        }
-
-        .load-album-btn {
-            height: 30px;
-            width: 42px;
-            padding: 0;
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            border-radius: 15px;
-            color: #2a2a2a;
-            font-size: 9px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            z-index: 15;
-        }
-
-        .load-album-btn:active {
-            transform: scale(0.95);
-            background: rgba(255, 255, 255, 0.85);
-        }
-
-        .load-album-btn.loading {
-            opacity: 0.6;
-            pointer-events: none;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 0.3; }
-        }
-
-        .download-icon {
-            font-size: 16px;
-            color: #1a1a1a;
-            font-weight: 900;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .spotify-btn {
-            height: 30px;
-            padding: 0 16px;
-            background: linear-gradient(135deg, #ff1493 0%, #ff1493 60%, #ff69b4 85%, #ffb6d9 100%);
-            border: none;
-            border-radius: 18px;
-            color: white;
-            font-size: 9px;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-            flex-shrink: 0;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-            position: relative;
-            z-index: 15;
-        }
-
-        .spotify-btn:active {
-            transform: scale(0.95);
-            background: linear-gradient(135deg, #e01283 0%, #e01283 60%, #ff1493 85%, #ff69b4 100%);
-        }
-
-        /* Info Grid (5 boxes) */
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
-            opacity: 0;
-            transition: opacity 0.6s;
-            padding: 12px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            margin-top: 24px;
-        }
-
-        .info-grid.visible {
-            opacity: 1;
-        }
-
-        .info-box {
-            text-align: center;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-        }
-
-        .info-icon {
-            font-size: 12px;
-            color: #999999;
-            line-height: 1;
-            padding-bottom: 2px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            width: 20px;
-            display: flex;
-            justify-content: center;
-            margin-bottom: 4px;
-            filter: grayscale(100%);
-        }
-
-        .info-box-value {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.95);
-            font-weight: 400;
-            line-height: 1.3;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 100%;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
-            letter-spacing: 0.3px;
-        }
-
-        /* Album Name - CENTER - BIGGEST */
-        .info-box:nth-child(3) .info-icon {
-            font-size: 16px;
-            color: #ff1493;
-            filter: none;
-            text-shadow: 0 0 10px rgba(255, 20, 147, 0.4);
-            border-bottom: 1.5px solid rgba(255, 20, 147, 0.3);
-            width: 24px;
-        }
-
-        .info-box:nth-child(3) .info-box-value {
-            font-size: 18px;
-            font-weight: 600;
-            text-shadow: 0 0 12px rgba(255, 255, 255, 0.4),
-                         0 0 20px rgba(255, 20, 147, 0.2);
-            letter-spacing: 0.5px;
-        }
-
-        /* Track Name - LEFT */
-        .info-box:nth-child(1) .info-box-value {
-            font-size: 10px;
-            font-weight: 300;
-        }
-
-        /* Style - Next to Album */
-        .info-box:nth-child(2) .info-box-value {
-            font-size: 9px;
-            font-weight: 300;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        /* Artist - Next to Album */
-        .info-box:nth-child(4) .info-box-value {
-            font-size: 10px;
-            font-weight: 300;
-        }
-
-        /* Duration - RIGHT */
-        .info-box:nth-child(5) .info-box-value {
-            font-size: 11px;
-            font-weight: 300;
-            font-family: 'Courier New', monospace;
-        }
-
-        /* Bottom Row - NOW AT SCREEN BOTTOM */
-        .bottom-row {
-            position: fixed;
-            bottom: 10px;
-            left: 15px;
-            right: 15px;
-            display: flex;
-            gap: 8px;
-            opacity: 0;
-            transition: opacity 0.6s;
-            z-index: 110;
-        }
-
-        .bottom-row.visible {
-            opacity: 1;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 6px;
-        }
-
-        .action-btn {
-            width: 36px;
-            height: 36px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            font-size: 15px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .action-btn:active {
-            transform: scale(0.95);
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .lyrics-box {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 0;
-            height: 36px;
-            cursor: text;
-            transition: background 0.2s;
-            display: flex;
-            align-items: center;
+        .modal-overlay.active {
+            display: block;
         }
 
         .comment-input {
             width: 100%;
-            height: 100%;
-            background: transparent;
+            padding: 15px;
+            background: var(--bubble-bg);
             border: none;
-            outline: none;
-            padding: 0 12px;
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.7);
-            text-align: right;
-            direction: rtl;
+            border-radius: 15px;
+            color: var(--text-color);
+            margin-top: 20px;
+            resize: vertical;
+            font-family: inherit;
         }
 
-        .comment-input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+        .comment-item {
+            background: var(--bubble-bg);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 10px;
         }
 
-        .lyrics-box:focus-within {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+        .comment-user {
+            font-weight: 600;
+            margin-bottom: 5px;
         }
 
-        /* ===== WHEEL SECTION (56vh) ===== */
-        .wheel-section {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 50;
-            overflow: visible;
-            background: transparent;
+        .comment-text {
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
 
-        .wheel-container {
-            position: relative;
-            width: 500px;
-            height: 500px;
-            z-index: 50;
-        }
-
-        /* Radial Grid - INFINITE - UNDER EVERYTHING */
-        .radial-grid {
-            position: fixed;
-            width: 1800px;
-            height: 1800px;
-            max-width: none;
-            max-height: none;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .radial-line {
-            position: absolute;
-            width: 2px;
-            height: 100%;
-            top: 0;
-            left: 50%;
-            transform-origin: center center;
-            background: linear-gradient(180deg, 
-                rgba(180, 180, 180, 0.06) 0%,
-                rgba(200, 200, 200, 0.12) 20%,
-                rgba(255, 255, 255, 0.18) 40%,
-                rgba(200, 200, 200, 0.12) 60%,
-                rgba(180, 180, 180, 0.06) 100%
-            );
-            background-size: 100% 200%;
-            animation: 
-                lineGrow 1.5s ease-out forwards,
-                gradientMove 4s ease-in-out infinite 1.5s;
-            opacity: 0;
-        }
-
-        @keyframes lineGrow {
-            0% {
-                height: 0;
-                opacity: 0;
-            }
-            50% {
-                opacity: 0.5;
-            }
-            100% {
-                height: 100%;
-                opacity: 1;
-            }
-        }
-
-        @keyframes gradientMove {
-            0%, 100% {
-                background-position: 0% 0%;
-            }
-            50% {
-                background-position: 0% 100%;
-            }
-        }
-
-        #wheel-canvas {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-            z-index: 10;
-            filter: drop-shadow(0 10px 30px rgba(0,0,0,0.7));
-        }
-
-        .center-play-btn {
+        /* Audio Player (Hidden) */
+        #audioPlayer {
             display: none;
         }
 
-        /* ===== BOTTOM SECTION - STYLE CIRCLES ===== */
-        .bottom-section {
-            position: fixed;
-            left: 12px;
-            bottom: 120px;
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-            z-index: 99;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .bottom-section.open {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-
-        .style-toggle {
-            position: fixed;
-            left: 12px;
-            bottom: 60px;
-            width: 48px;
-            height: 60px;
-            background: rgba(17, 17, 17, 0.85);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 0 24px 24px 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 105;
-            transition: transform 0.2s;
-        }
-
-        .style-toggle:active {
-            transform: scale(0.95);
-        }
-
-        .style-toggle-icon {
-            width: 24px;
-            height: 24px;
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .style-dots {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 6px;
-            background: rgba(17, 17, 17, 0.85);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            min-height: 120px;
-            position: relative;
-        }
-
-        .style-dot {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            opacity: 0.6;
-            transition: opacity 0.3s, transform 0.2s;
-            cursor: pointer;
-        }
-
-        .style-dot.active {
-            opacity: 1;
-            transform: scale(1.15);
-        }
-
-        .style-circle {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            box-shadow: 0 2px 6px rgba(255, 255, 255, 0.2);
-            transition: box-shadow 0.3s, transform 0.2s;
-        }
-
-        .style-dot.active .style-circle {
-            box-shadow: 0 3px 10px rgba(255, 255, 255, 0.4);
-        }
-
-        .style-label {
-            font-size: 6px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.6);
-            text-transform: uppercase;
-            letter-spacing: 0.2px;
+        /* Loading */
+        .loading {
             text-align: center;
-            line-height: 1.1;
-            max-width: 40px;
-            word-wrap: break-word;
+            padding: 50px;
+            font-size: 18px;
+            color: var(--text-secondary);
         }
 
-        /* Volume Control */
-        .volume-control {
-            position: fixed;
-            right: 12px;
-            bottom: 120px;
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            z-index: 149;
-            background: rgba(17, 17, 17, 0.92);
-            backdrop-filter: blur(10px);
-            padding: 10px 6px;
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .volume-control.open {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: all;
-        }
-
-        .volume-control > * {
-            position: relative;
-        }
-
-        .volume-toggle {
-            position: fixed;
-            right: 12px;
-            bottom: 60px;
-            width: 48px;
-            height: 60px;
-            background: rgba(17, 17, 17, 0.92);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px 0 0 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 155;
-            transition: transform 0.2s;
-        }
-
-        .volume-toggle:active {
-            transform: scale(0.95);
-        }
-
-        .volume-toggle-icon {
-            width: 24px;
-            height: 24px;
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .volume-icon {
-            width: 14px;
-            height: 14px;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .volume-slider {
-            writing-mode: bt-lr;
-            -webkit-appearance: slider-vertical;
-            width: 4px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.12);
-            border-radius: 2px;
-            outline: none;
-            cursor: pointer;
-        }
-
-        .volume-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #ff1493;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(255, 20, 147, 0.5);
-        }
-
-        .volume-value {
-            font-size: 9px;
-            color: rgba(255, 255, 255, 0.6);
-            font-weight: 600;
-        }
-
-        /* Lyrics Overlay */
-        .lyrics-overlay {
-            position: fixed;
-            bottom: -100%;
-            left: 0;
-            right: 0;
-            max-height: 65vh;
-            background: rgba(10, 10, 10, 0.98);
-            backdrop-filter: blur(20px);
-            border-top: 2px solid rgba(255, 20, 147, 0.4);
-            padding: 25px 20px;
-            overflow-y: auto;
-            transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 200;
-        }
-
-        .lyrics-overlay.visible {
-            bottom: 0;
-        }
-
-        .lyrics-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .lyrics-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: #ff1493;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-
-        .lyrics-close {
-            background: none;
-            border: none;
-            color: rgba(255, 255, 255, 0.6);
-            cursor: pointer;
-            font-size: 28px;
-            padding: 0;
-            line-height: 1;
-            transition: color 0.2s;
-        }
-
-        .lyrics-close:active {
-            color: white;
-        }
-
-        .lyrics-text {
-            font-size: 14px;
-            line-height: 1.8;
-            color: rgba(255, 255, 255, 0.95);
-            white-space: pre-wrap;
-            text-align: center;
-            direction: rtl;
-        }
-
-        .status-bar {
-            position: fixed;
-            bottom: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.4);
-            text-align: center;
-            z-index: 80;
-            padding: 4px 12px;
-            background: rgba(17, 17, 17, 0.7);
-            border-radius: 12px;
-        }
-
-        /* Scrollbar */
-        .lyrics-box::-webkit-scrollbar,
-        .lyrics-overlay::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        .lyrics-box::-webkit-scrollbar-track,
-        .lyrics-overlay::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-        }
-
-        .lyrics-box::-webkit-scrollbar-thumb,
-        .lyrics-overlay::-webkit-scrollbar-thumb {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 2px;
-        }
-
-        /* Desktop Fallback */
-        @media (min-width: 769px) {
-            .top-section {
-                height: 25vh;
-                padding: 15px 30px;
-            }
-
-            .selector-row {
-                gap: 12px;
-            }
-
-            .album-dropdown {
-                width: 220px;
-                height: 36px;
-                font-size: 12px;
-                padding: 0 16px;
-            }
-
-            .load-album-btn {
-                height: 36px;
-                width: 50px;
-                border-radius: 18px;
-            }
-
-            .download-icon {
-                font-size: 18px;
-            }
-
-            .spotify-btn {
-                height: 36px;
-                padding: 0 22px;
-                font-size: 11px;
-            }
-
-            .info-icon {
-                font-size: 14px;
-            }
-
-            .info-box:nth-child(3) .info-icon {
-                font-size: 20px;
-            }
-
-            .info-box-value {
-                font-size: 13px;
-            }
-
-            .info-box:nth-child(3) .info-box-value {
-                font-size: 22px;
-            }
-
-            .info-box:nth-child(1) .info-box-value {
-                font-size: 12px;
-            }
-
-            .info-box:nth-child(2) .info-box-value {
-                font-size: 11px;
-            }
-
-            .info-box:nth-child(4) .info-box-value {
-                font-size: 12px;
-            }
-
-            .info-box:nth-child(5) .info-box-value {
-                font-size: 13px;
-            }
-
-            .action-btn {
-                width: 42px;
-                height: 42px;
-                font-size: 17px;
-            }
-
-            .lyrics-box {
-                max-height: 70px;
-                padding: 12px 14px;
-            }
-
-            .lyrics-text-preview {
-                font-size: 11px;
-            }
-
-            .wheel-section {
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-            }
-
-            .radial-grid {
-                top: 50%;
-                left: 50%;
-            }
-
+        /* Responsive */
+        @media (max-width: 768px) {
             .wheel-container {
-                width: 600px;
-                height: 600px;
+                width: 400px;
+                height: 400px;
             }
 
-            .style-dots {
-                gap: 10px;
-                padding: 12px 8px;
-                min-height: 140px;
-            }
-
-            .style-circle {
-                width: 24px;
-                height: 24px;
-            }
-
-            .style-label {
-                font-size: 7px;
-            }
-
-            .volume-slider {
-                height: 140px;
-            }
-
-            .comment-input {
+            .info-bubble {
                 font-size: 12px;
+                padding: 12px 20px;
+            }
+
+            .control-bubble {
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="top-section">
-        <div class="selector-row">
-            <div class="album-selector">
-                <select class="album-dropdown" id="albumDropdown">
-                    <option value="">Select album...</option>
-                </select>
-                <button class="load-album-btn" id="loadAlbumBtn" title="Load Album">
-                    <span class="download-icon">▼</span>
-                </button>
-            </div>
-            <button class="spotify-btn" id="spotifyBtn">Spotify</button>
+    <div class="container">
+        <!-- Info Bubbles (Track Details) -->
+        <div class="info-section" id="infoSection">
+            <div class="info-bubble" id="trackNameBubble">Track Name</div>
+            <div class="info-bubble" id="artistBubble">Artist Name</div>
+            <div class="info-bubble" id="styleBubble">Style</div>
         </div>
 
-        <div class="info-grid" id="infoGrid">
-            <div class="info-box">
-                <div class="info-icon">🎵</div>
-                <div class="info-box-value" id="trackNameValue"></div>
-            </div>
-            <div class="info-box">
-                <div class="info-icon">🎨</div>
-                <div class="info-box-value" id="styleValue"></div>
-            </div>
-            <div class="info-box">
-                <div class="info-icon">💿</div>
-                <div class="info-box-value" id="albumNameValue"></div>
-            </div>
-            <div class="info-box">
-                <div class="info-icon">👤</div>
-                <div class="info-box-value" id="artistNameValue"></div>
-            </div>
-            <div class="info-box">
-                <div class="info-icon">⏱️</div>
-                <div class="info-box-value" id="durationValue"></div>
-            </div>
-        </div>
-
-        <div class="bottom-row" id="bottomRow">
-            <div class="action-buttons">
-                <button class="action-btn" id="likeBtn">❤️</button>
-                <button class="action-btn" id="commentBtn">💬</button>
-            </div>
-            <div class="lyrics-box" id="lyricsBox">
-                <input type="text" class="comment-input" placeholder="כתוב תגובה..." id="commentInput">
-            </div>
-        </div>
-    </div>
-
-    <div class="wheel-section">
+        <!-- Wheel Container -->
         <div class="wheel-container">
-            <div class="radial-grid" id="radialGrid"></div>
-            <canvas id="wheel-canvas"></canvas>
+            <div class="wheel" id="mainWheel">
+                <!-- Rings and dots will be generated by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Control Bubbles -->
+        <div class="controls">
+            <!-- Volume Control -->
+            <div class="volume-container">
+                <button class="control-bubble" id="volumeBtn" title="Volume">
+                    🔊
+                </button>
+                <div class="volume-slider" id="volumeSlider">
+                    <input type="range" min="0" max="100" value="70" id="volumeControl">
+                </div>
+            </div>
+
+            <!-- Lyrics Control -->
+            <div class="lyrics-container">
+                <button class="control-bubble" id="lyricsBtn" title="Lyrics">
+                    📄
+                </button>
+                <div class="lyrics-panel" id="lyricsPanel">
+                    <div class="lyrics-text" id="lyricsText">No lyrics available</div>
+                </div>
+            </div>
+
+            <!-- Categories Control -->
+            <div class="categories-container">
+                <button class="control-bubble" id="categoriesBtn" title="Categories">
+                    🎨
+                </button>
+                <div class="category-bubbles" id="categoryBubbles">
+                    <!-- Category bubbles generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Social Section -->
+        <div class="social-section">
+            <button class="social-bubble" id="likeBtn">
+                ❤️ <span id="likeCount">0</span>
+            </button>
+            <button class="social-bubble" id="commentBtn">
+                💬 <span id="commentCount">0</span>
+            </button>
         </div>
     </div>
 
-    <div class="style-toggle" id="styleToggle">
-        <svg class="style-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 24px; height: 24px;">
-            <path d="M12 19V5M5 12l7-7 7 7"/>
-        </svg>
+    <!-- Audio Player -->
+    <audio id="audioPlayer" preload="metadata"></audio>
+
+    <!-- Comments Modal -->
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="comments-modal" id="commentsModal">
+        <h3>תגובות</h3>
+        <div id="commentsList"></div>
+        <textarea class="comment-input" id="commentInput" placeholder="הוסף תגובה..." rows="3"></textarea>
+        <button class="social-bubble" id="submitComment" style="margin-top: 10px;">שלח</button>
     </div>
 
-    <div class="bottom-section" id="bottomSection">
-        <div class="style-dots" id="styleDots">
-        </div>
-    </div>
+    <script>
+        // Global state
+        const state = {
+            currentAlbum: null,
+            currentTrack: null,
+            currentStyle: null,
+            isPlaying: false,
+            userId: localStorage.getItem('userId') || 'user_' + Date.now()
+        };
 
-    <div class="volume-toggle" id="volumeToggle">
-        <svg class="volume-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 24px; height: 24px;">
-            <path d="M12 19V5M5 12l7-7 7 7"/>
-        </svg>
-    </div>
+        // Store user ID
+        if (!localStorage.getItem('userId')) {
+            localStorage.setItem('userId', state.userId);
+        }
 
-    <div class="volume-control" id="volumeControl">
-        <svg class="volume-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-        </svg>
-        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="70">
-        <span class="volume-value" id="volumeValue">70%</span>
-    </div>
+        const audioPlayer = document.getElementById('audioPlayer');
+        const volumeControl = document.getElementById('volumeControl');
 
-    <div class="status-bar" id="statusBar">Ready</div>
+        // Initialize
+        async function init() {
+            try {
+                // Load albums list
+                const response = await fetch('/api/albums/list');
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.albums.length > 0) {
+                    // Load first album
+                    await loadAlbum(data.albums[0]);
+                } else {
+                    document.querySelector('.container').innerHTML = '<div class="loading">No albums found. Please upload content.</div>';
+                }
+            } catch (error) {
+                console.error('Error initializing:', error);
+                document.querySelector('.container').innerHTML = '<div class="loading">Error loading album</div>';
+            }
+        }
 
-    <div class="lyrics-overlay" id="lyricsOverlay">
-        <div class="lyrics-header">
-            <div class="lyrics-title">♪ מילים מלאות</div>
-            <button class="lyrics-close" id="lyricsClose">×</button>
-        </div>
-        <div class="lyrics-text" id="lyricsText"></div>
-    </div>
+        // Load album
+        async function loadAlbum(albumName) {
+            try {
+                const response = await fetch(`/api/album/load?album=${encodeURIComponent(albumName)}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    state.currentAlbum = data.data;
+                    renderWheel();
+                    renderCategories();
+                }
+            } catch (error) {
+                console.error('Error loading album:', error);
+            }
+        }
 
-    <script src="/static/js/config.js"></script>
-    <script src="/static/js/player.js"></script>
-    <script src="/static/js/canvas.js"></script>
-    <script src="/static/js/ui.js"></script>
-    <script src="/static/js/main.js"></script>
+        // Render wheel
+        function renderWheel() {
+            const wheel = document.getElementById('mainWheel');
+            wheel.innerHTML = '';
+            
+            const tracks = Object.values(state.currentAlbum.tracks);
+            const trackCount = tracks.length;
+            const centerX = 300;
+            const centerY = 300;
+            
+            tracks.forEach((track, index) => {
+                const radius = 200 - (index * 20);
+                const angle = (index / trackCount) * Math.PI * 2 - Math.PI / 2;
+                const x = centerX + radius * Math.cos(angle) - 20;
+                const y = centerY + radius * Math.sin(angle) - 20;
+                
+                const dot = document.createElement('div');
+                dot.className = 'track-dot';
+                dot.style.left = x + 'px';
+                dot.style.top = y + 'px';
+                dot.dataset.trackNumber = track.number;
+                
+                dot.innerHTML = `
+                    <div class="play-icon"></div>
+                    <div class="pause-icon"></div>
+                `;
+                
+                dot.addEventListener('click', () => selectTrack(track.number));
+                
+                wheel.appendChild(dot);
+            });
+        }
+
+        // Render category bubbles
+        function renderCategories() {
+            const container = document.getElementById('categoryBubbles');
+            container.innerHTML = '';
+            
+            state.currentAlbum.styles.forEach(style => {
+                const bubble = document.createElement('div');
+                bubble.className = 'category-bubble';
+                bubble.style.backgroundColor = style.color;
+                bubble.textContent = style.name;
+                bubble.addEventListener('click', () => selectStyle(style.key));
+                container.appendChild(bubble);
+            });
+        }
+
+        // Select track
+        async function selectTrack(trackNumber) {
+            state.currentTrack = state.currentAlbum.tracks[trackNumber];
+            
+            // Update UI
+            document.querySelectorAll('.track-dot').forEach(dot => {
+                dot.classList.remove('active', 'playing');
+            });
+            
+            const activeDot = document.querySelector(`[data-track-number="${trackNumber}"]`);
+            if (activeDot) {
+                activeDot.classList.add('active');
+            }
+            
+            // Update info bubbles
+            document.getElementById('trackNameBubble').textContent = state.currentTrack.name;
+            document.getElementById('artistBubble').textContent = state.currentTrack.artist;
+            
+            // Load social data
+            await loadSocialData();
+            
+            // If style selected, play
+            if (state.currentStyle) {
+                playTrack();
+            }
+        }
+
+        // Select style
+        function selectStyle(styleKey) {
+            state.currentStyle = styleKey;
+            const styleName = state.currentAlbum.styles.find(s => s.key === styleKey)?.name;
+            document.getElementById('styleBubble').textContent = styleName || styleKey;
+            
+            if (state.currentTrack) {
+                playTrack();
+            }
+        }
+
+        // Play track
+        function playTrack() {
+            if (!state.currentTrack || !state.currentStyle) return;
+            
+            const styleData = state.currentTrack.styles[state.currentStyle];
+            if (!styleData || !styleData.url) {
+                alert('Track not available for this style');
+                return;
+            }
+            
+            // Handle YouTube or file
+            if (styleData.type === 'youtube') {
+                // For YouTube, we'd need an embedded player or YouTube API
+                window.open(styleData.url, '_blank');
+            } else {
+                audioPlayer.src = styleData.url;
+                audioPlayer.play();
+                state.isPlaying = true;
+                
+                const activeDot = document.querySelector('.track-dot.active');
+                if (activeDot) {
+                    activeDot.classList.add('playing');
+                }
+            }
+            
+            // Load lyrics if available
+            if (styleData.lyrics_url) {
+                fetch(styleData.lyrics_url)
+                    .then(r => r.text())
+                    .then(text => {
+                        document.getElementById('lyricsText').textContent = text;
+                    });
+            }
+        }
+
+        // Toggle play/pause
+        document.addEventListener('click', (e) => {
+            const dot = e.target.closest('.track-dot.active');
+            if (dot) {
+                if (state.isPlaying) {
+                    audioPlayer.pause();
+                    state.isPlaying = false;
+                    dot.classList.remove('playing');
+                } else {
+                    audioPlayer.play();
+                    state.isPlaying = true;
+                    dot.classList.add('playing');
+                }
+            }
+        });
+
+        // Volume control
+        document.getElementById('volumeBtn').addEventListener('click', () => {
+            document.getElementById('volumeSlider').classList.toggle('active');
+        });
+
+        volumeControl.addEventListener('input', (e) => {
+            audioPlayer.volume = e.target.value / 100;
+        });
+
+        // Lyrics control
+        document.getElementById('lyricsBtn').addEventListener('click', () => {
+            document.getElementById('lyricsPanel').classList.toggle('active');
+        });
+
+        // Categories control
+        document.getElementById('categoriesBtn').addEventListener('click', () => {
+            document.getElementById('categoryBubbles').classList.toggle('active');
+        });
+
+        // Magnetic effect for info bubbles
+        const infoBubbles = document.querySelectorAll('.info-bubble');
+        document.addEventListener('mousemove', (e) => {
+            infoBubbles.forEach(bubble => {
+                const rect = bubble.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const distX = e.clientX - centerX;
+                const distY = e.clientY - centerY;
+                const distance = Math.sqrt(distX * distX + distY * distY);
+                
+                if (distance < 150) {
+                    const strength = (150 - distance) / 150;
+                    const moveX = (distX / distance) * strength * 20;
+                    const moveY = (distY / distance) * strength * 20;
+                    
+                    bubble.style.setProperty('--mouse-x', moveX + 'px');
+                    bubble.style.setProperty('--mouse-y', moveY + 'px');
+                    bubble.classList.add('magnetic');
+                } else {
+                    bubble.style.setProperty('--mouse-x', '0px');
+                    bubble.style.setProperty('--mouse-y', '0px');
+                    bubble.classList.remove('magnetic');
+                }
+            });
+        });
+
+        // Social features
+        async function loadSocialData() {
+            if (!state.currentTrack) return;
+            
+            const trackNum = state.currentTrack.number;
+            document.getElementById('likeCount').textContent = state.currentTrack.social.likes;
+            document.getElementById('commentCount').textContent = state.currentTrack.social.comments;
+            
+            // Check if user liked
+            const likeBtn = document.getElementById('likeBtn');
+            const liked = localStorage.getItem(`liked_${state.currentAlbum.albumName}_${trackNum}`);
+            if (liked) {
+                likeBtn.classList.add('liked');
+            } else {
+                likeBtn.classList.remove('liked');
+            }
+        }
+
+        document.getElementById('likeBtn').addEventListener('click', async () => {
+            if (!state.currentTrack) return;
+            
+            try {
+                const response = await fetch('/api/social/like', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        album: state.currentAlbum.albumName,
+                        track: state.currentTrack.number,
+                        userId: state.userId
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('likeCount').textContent = data.count;
+                    
+                    const likeBtn = document.getElementById('likeBtn');
+                    if (data.liked) {
+                        likeBtn.classList.add('liked');
+                        localStorage.setItem(`liked_${state.currentAlbum.albumName}_${state.currentTrack.number}`, 'true');
+                    } else {
+                        likeBtn.classList.remove('liked');
+                        localStorage.removeItem(`liked_${state.currentAlbum.albumName}_${state.currentTrack.number}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling like:', error);
+            }
+        });
+
+        document.getElementById('commentBtn').addEventListener('click', async () => {
+            if (!state.currentTrack) return;
+            
+            document.getElementById('modalOverlay').classList.add('active');
+            document.getElementById('commentsModal').classList.add('active');
+            
+            // Load comments
+            try {
+                const response = await fetch(`/api/social/comments?album=${encodeURIComponent(state.currentAlbum.albumName)}&track=${state.currentTrack.number}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const list = document.getElementById('commentsList');
+                    list.innerHTML = data.comments.map(c => `
+                        <div class="comment-item">
+                            <div class="comment-user">${c.user}</div>
+                            <div class="comment-text">${c.text}</div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading comments:', error);
+            }
+        });
+
+        document.getElementById('submitComment').addEventListener('click', async () => {
+            const input = document.getElementById('commentInput');
+            const text = input.value.trim();
+            
+            if (!text || !state.currentTrack) return;
+            
+            try {
+                const userName = prompt('Enter your name:') || 'Anonymous';
+                
+                const response = await fetch('/api/social/comment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        album: state.currentAlbum.albumName,
+                        track: state.currentTrack.number,
+                        userName,
+                        comment: text
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    input.value = '';
+                    document.getElementById('commentBtn').click(); // Reload comments
+                }
+            } catch (error) {
+                console.error('Error adding comment:', error);
+            }
+        });
+
+        document.getElementById('modalOverlay').addEventListener('click', () => {
+            document.getElementById('modalOverlay').classList.remove('active');
+            document.getElementById('commentsModal').classList.remove('active');
+        });
+
+        // Start
+        init();
+    </script>
 </body>
 </html>
