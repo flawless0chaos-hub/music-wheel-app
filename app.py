@@ -11,6 +11,19 @@ app.config['UPLOAD_FOLDER'] = 'temp_uploads'
 # Ensure temp upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Helper function to extract YouTube ID
+def extract_youtube_id(url):
+    """Extract YouTube video ID from URL"""
+    patterns = [
+        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
+        r'youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, url)
+        if match:
+            return match.group(1)
+    return None
+
 # Initialize R2 Storage Manager
 try:
     storage_manager = R2Manager()
@@ -24,23 +37,6 @@ except Exception as e:
     print("   - R2_BUCKET_NAME (optional, defaults to 'music-wheel')")
     print("   - R2_PUBLIC_URL (optional)")
     storage_manager = None
-
-
-# ===============================
-# Helper Functions
-# ===============================
-
-def extract_youtube_id(url):
-    """Extract YouTube video ID from URL"""
-    patterns = [
-        r'(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})',
-        r'youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})',
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, url)
-        if match:
-            return match.group(1)
-    return None
 
 
 # ===============================
@@ -125,9 +121,7 @@ def init_album():
         print(f"🎨 Styles: {styles}")
         print(f"🔄 Transitions: {'Yes' if use_transitions else 'No'}")
         
-        album_id = storage_manager.initialize_album_structure(
-            album_name, track_count, styles, use_transitions
-        )
+        album_id = storage_manager.initialize_album_structure(album_name, track_count, styles, use_transitions)
         
         return jsonify({
             'status': 'success',
@@ -179,12 +173,11 @@ def upload_track():
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
         
-        # Process all style files (can be files OR YouTube links)
+        # Process YouTube links first
         for key in request.form:
             if key in ['album', 'number', 'name', 'artist']:
                 continue
             
-            # Check if it's a YouTube link
             if key.startswith('youtube_'):
                 youtube_url = request.form[key]
                 if not youtube_url:
@@ -214,7 +207,7 @@ def upload_track():
                 uploaded_files.append(f"{key}: {url}")
                 print(f"  ✅ YouTube link stored: {key}")
         
-        # Process uploaded files
+        # Process all uploaded files
         for key in request.files:
             if key == 'icon':
                 continue
@@ -227,16 +220,20 @@ def upload_track():
             parts = key.split('_')
             
             if parts[0] == 'track':
+                # track_rock.mp3
                 style_key = '_'.join(parts[1:])
                 file_type = 'audio'
             elif parts[0] == 'lyrics':
+                # lyrics_rock.txt
                 style_key = '_'.join(parts[1:])
                 file_type = 'lyrics'
             elif parts[0] == 'transition':
                 if parts[1] == 'lyrics':
+                    # transition_lyrics_rock.txt
                     style_key = '_'.join(parts[2:])
                     file_type = 'transition_lyrics'
                 else:
+                    # transition_rock.mp3
                     style_key = '_'.join(parts[1:])
                     file_type = 'transition_audio'
             else:
@@ -272,10 +269,17 @@ def upload_track():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+# ===============================
+# Social Features API
+# ===============================
+
 @app.route('/api/social/like', methods=['POST'])
 def add_like():
-    """Add or remove a like"""
+    """Toggle like for a track"""
     try:
+        if not storage_manager:
+            return jsonify({'status': 'error', 'message': 'Storage not initialized'}), 500
+        
         data = request.json
         album_name = data.get('album')
         track_number = data.get('track')
@@ -284,22 +288,30 @@ def add_like():
         result = storage_manager.toggle_like(album_name, track_number, user_id)
         return jsonify({'status': 'success', 'liked': result['liked'], 'count': result['count']})
     except Exception as e:
+        print(f"Error toggling like: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @app.route('/api/social/comment', methods=['POST'])
 def add_comment():
-    """Add a comment"""
+    """Add a comment to a track"""
     try:
+        if not storage_manager:
+            return jsonify({'status': 'error', 'message': 'Storage not initialized'}), 500
+        
         data = request.json
         album_name = data.get('album')
         track_number = data.get('track')
         user_name = data.get('userName', 'Anonymous')
         comment_text = data.get('comment')
         
+        if not comment_text:
+            return jsonify({'status': 'error', 'message': 'Comment text required'}), 400
+        
         result = storage_manager.add_comment(album_name, track_number, user_name, comment_text)
         return jsonify({'status': 'success', 'comment': result})
     except Exception as e:
+        print(f"Error adding comment: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -307,12 +319,16 @@ def add_comment():
 def get_comments():
     """Get all comments for a track"""
     try:
+        if not storage_manager:
+            return jsonify({'status': 'error', 'message': 'Storage not initialized'}), 500
+        
         album_name = request.args.get('album')
         track_number = int(request.args.get('track'))
         
         comments = storage_manager.get_comments(album_name, track_number)
         return jsonify({'status': 'success', 'comments': comments})
     except Exception as e:
+        print(f"Error getting comments: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -341,7 +357,7 @@ if __name__ == '__main__':
     print("\n" + "=" * 50)
     print("🎵 Music Wheel Manager Starting...")
     print("=" * 50)
-    print(f"\n🔌 Port: {port}")
+    print(f"\n📍 Port: {port}")
     print(f"🔧 Debug Mode: {debug_mode}")
     print(f"☁️  Storage: Cloudflare R2")
     print("\n" + "=" * 50 + "\n")
