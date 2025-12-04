@@ -1,4 +1,4 @@
-שדגעכשדגכשדגכ# 🎵 Music Wheel Player - Cloudflare R2 Version
+# 🎵 Music Wheel Player - Cloudflare R2 Version
 
 Interactive music player with Cloudflare R2 storage.
 
