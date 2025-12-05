@@ -137,9 +137,6 @@ class MusicWheelApp {
             });
         }
         
-        // Generate radial grid
-        this.generateRadialGrid();
-        
         // Volume control
         const volumeSlider = document.getElementById('volumeSlider');
         const volumeValue = document.getElementById('volumeValue');
@@ -157,26 +154,6 @@ class MusicWheelApp {
         }
         
         console.log('✅ UI setup complete');
-    }
-    
-    generateRadialGrid() {
-        const grid = document.getElementById('radialGrid');
-        if (!grid) return;
-        
-        const numLines = 24;  // More lines for infinity effect
-        
-        for (let i = 0; i < numLines; i++) {
-            const line = document.createElement('div');
-            line.className = 'radial-line';
-            const angle = (i * 360 / numLines);
-            line.style.transform = `rotate(${angle}deg)`;
-            
-            // Random delay for each line
-            const randomDelay = Math.random() * 2;
-            line.style.animationDelay = `${randomDelay}s, ${randomDelay + 1.5}s`;
-            
-            grid.appendChild(line);
-        }
     }
     
     setupCallbacks() {

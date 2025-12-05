@@ -307,13 +307,21 @@ class R2Manager:
                         has_youtube = style_data.get('audio_type') == 'youtube' and style_data.get('youtube_id')
                         
                         if has_file_audio or has_youtube:
-                            track_data['styles'][style_key] = {
-                                'url': style_data.get('audio_url') if has_file_audio else None,
+                            style_track = {
                                 'audio_type': style_data.get('audio_type', 'file'),
-                                'youtube_id': style_data.get('youtube_id', ''),
                                 'lyrics_url': style_data.get('lyrics_url'),
                                 'uploaded': True
                             }
+                            
+                            # Add URL only for file-based audio
+                            if has_file_audio:
+                                style_track['url'] = style_data.get('audio_url')
+                            
+                            # Add YouTube ID only for YouTube audio
+                            if has_youtube:
+                                style_track['youtube_id'] = style_data.get('youtube_id')
+                            
+                            track_data['styles'][style_key] = style_track
                             
                             if use_transitions:
                                 has_transition_file = style_data.get('transition_audio_url')

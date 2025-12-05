@@ -108,11 +108,13 @@ class WheelCanvas {
     drawRadialLines() {
         const numLines = this.numTracks * 2;
         
-        // ✅ Get the outermost ring radius - same as actual ring
+        // ✅ Get the MAXIMUM radius across all styles
         const styleKeys = Object.keys(CONFIG.styles);
-        const maxRadius = styleKeys.length > 0 ? 
-            this.getRadius(styleKeys[0]) : 
-            200;
+        let maxRadius = 200; // fallback
+        
+        if (styleKeys.length > 0) {
+            maxRadius = Math.max(...styleKeys.map(key => this.getRadius(key)));
+        }
         
         for (let i = 0; i < numLines; i++) {
             const angle = ((i * 2 * Math.PI / numLines) - Math.PI / 2);
