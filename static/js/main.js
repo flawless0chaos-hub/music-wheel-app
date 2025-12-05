@@ -352,9 +352,12 @@ class MusicWheelApp {
             };
             
             Object.entries(trackData.styles || {}).forEach(([styleKey, styleData]) => {
-                if (styleData.url) {
+                // Support both regular URL and YouTube
+                if (styleData.url || styleData.youtube_id) {
                     converted.tracks[segment].styles[styleKey] = {
-                        url: styleData.url,
+                        url: styleData.url || null,
+                        youtube_id: styleData.youtube_id || null,
+                        audio_type: styleData.audio_type || 'file',
                         lyrics_url: styleData.lyrics_url || null
                     };
                 }
@@ -445,11 +448,23 @@ class MusicWheelApp {
         
         // Play audio
         try {
-            await this.player.loadTrack(styleData.url);
+            if (styleData.audio_type === 'youtube' && styleData.youtube_id) {
+                console.log('🎬 Playing YouTube:', styleData.youtube_id);
+                await this.player.loadYouTube(styleData.youtube_id);
+            } else if (styleData.url) {
+                console.log('🎵 Playing file:', styleData.url);
+                await this.player.loadTrack(styleData.url);
+            } else {
+                console.error('❌ No audio source available');
+                this.ui.updateStatus('אין קובץ אודיו זמין', 'error');
+                return;
+            }
+            
             await this.player.play();
             this.updatePlayButton(true);
         } catch (error) {
             console.error('Error playing:', error);
+            this.ui.updateStatus('שגיאה בהשמעה', 'error');
         }
     }
     
@@ -479,7 +494,14 @@ class MusicWheelApp {
         const styleData = trackData.styles[newStyle];
         
         try {
-            await this.player.loadTrack(styleData.url);
+            if (styleData.audio_type === 'youtube' && styleData.youtube_id) {
+                console.log('🎬 Switching to YouTube:', styleData.youtube_id);
+                await this.player.loadYouTube(styleData.youtube_id);
+            } else if (styleData.url) {
+                console.log('🎵 Switching to file:', styleData.url);
+                await this.player.loadTrack(styleData.url);
+            }
+            
             this.player.seek(currentTime);
             
             if (wasPlaying) {
