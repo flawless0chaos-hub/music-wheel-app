@@ -452,8 +452,12 @@ class MusicWheelApp {
                 console.log('🎬 Playing YouTube:', styleData.youtube_id);
                 await this.player.loadYouTube(styleData.youtube_id);
             } else if (styleData.url) {
-                console.log('🎵 Playing file:', styleData.url);
-                await this.player.loadTrack(styleData.url);
+                // Use proxy for R2 files to avoid CORS
+                const audioUrl = styleData.url.includes('r2.dev') 
+                    ? `/api/proxy/audio?url=${encodeURIComponent(styleData.url)}`
+                    : styleData.url;
+                console.log('🎵 Playing file:', audioUrl);
+                await this.player.loadTrack(audioUrl);
             } else {
                 console.error('❌ No audio source available');
                 this.ui.updateStatus('אין קובץ אודיו זמין', 'error');
@@ -498,8 +502,12 @@ class MusicWheelApp {
                 console.log('🎬 Switching to YouTube:', styleData.youtube_id);
                 await this.player.loadYouTube(styleData.youtube_id);
             } else if (styleData.url) {
-                console.log('🎵 Switching to file:', styleData.url);
-                await this.player.loadTrack(styleData.url);
+                // Use proxy for R2 files to avoid CORS
+                const audioUrl = styleData.url.includes('r2.dev') 
+                    ? `/api/proxy/audio?url=${encodeURIComponent(styleData.url)}`
+                    : styleData.url;
+                console.log('🎵 Switching to file:', audioUrl);
+                await this.player.loadTrack(audioUrl);
             }
             
             this.player.seek(currentTime);

@@ -302,18 +302,26 @@ class R2Manager:
                     }
                     
                     for style_key, style_data in track_info.get('styles', {}).items():
-                        if style_data.get('audio_url'):
+                        # Check if this style has audio (either file or YouTube)
+                        has_file_audio = style_data.get('audio_url')
+                        has_youtube = style_data.get('audio_type') == 'youtube' and style_data.get('youtube_id')
+                        
+                        if has_file_audio or has_youtube:
                             track_data['styles'][style_key] = {
-                                'url': style_data['audio_url'],
-                                'type': style_data.get('audio_type', 'file'),
+                                'url': style_data.get('audio_url') if has_file_audio else None,
+                                'audio_type': style_data.get('audio_type', 'file'),
                                 'youtube_id': style_data.get('youtube_id', ''),
                                 'lyrics_url': style_data.get('lyrics_url'),
                                 'uploaded': True
                             }
                             
                             if use_transitions:
-                                track_data['styles'][style_key]['transition_url'] = style_data.get('transition_audio_url', '')
-                                track_data['styles'][style_key]['transition_type'] = style_data.get('transition_audio_type', 'file')
+                                has_transition_file = style_data.get('transition_audio_url')
+                                has_transition_youtube = style_data.get('transition_audio_type') == 'youtube' and style_data.get('transition_youtube_id')
+                                
+                                track_data['styles'][style_key]['transition_url'] = style_data.get('transition_audio_url') if has_transition_file else None
+                                track_data['styles'][style_key]['transition_audio_type'] = style_data.get('transition_audio_type', 'file')
+                                track_data['styles'][style_key]['transition_youtube_id'] = style_data.get('transition_youtube_id', '')
                                 track_data['styles'][style_key]['transition_lyrics_url'] = style_data.get('transition_lyrics_url', '')
                     
                     album_data['tracks'][str(track_num)] = track_data
@@ -358,25 +366,22 @@ class R2Manager:
             if not track_info:
                 raise Exception("track_info.json not found")
             
-            youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-            
             if style_key not in track_info['styles']:
                 track_info['styles'][style_key] = {}
             
             if file_type == 'audio':
-                track_info['styles'][style_key]['audio_url'] = youtube_url
+                # Don't store URL - just the ID and type
                 track_info['styles'][style_key]['audio_type'] = 'youtube'
                 track_info['styles'][style_key]['youtube_id'] = video_id
                 track_info['styles'][style_key]['uploaded'] = True
             elif file_type == 'transition_audio':
-                track_info['styles'][style_key]['transition_audio_url'] = youtube_url
                 track_info['styles'][style_key]['transition_audio_type'] = 'youtube'
                 track_info['styles'][style_key]['transition_youtube_id'] = video_id
             
             self._upload_json(track_info, track_info_path)
-            print(f"  ✅ YouTube link stored: {video_id}")
+            print(f"  ✅ YouTube ID stored: {video_id}")
             
-            return youtube_url
+            return f"youtube:{video_id}"
             
         except Exception as e:
             raise Exception(f"Error storing YouTube link: {e}")
