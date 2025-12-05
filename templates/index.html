@@ -820,6 +820,7 @@
         }
     </style>
     <link rel="stylesheet" href="/static/css/info-bubbles.css">
+    <link rel="stylesheet" href="/static/css/ui-redesign.css">
 </head>
 <body>
     <div class="top-section">
@@ -873,6 +874,15 @@
         <div class="wheel-container">
             <div class="radial-grid" id="radialGrid"></div>
             <canvas id="wheel-canvas"></canvas>
+            <!-- Center Play Button -->
+            <button class="center-play-btn" id="centerPlayBtn">
+                <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                </svg>
+            </button>
         </div>
     </div>
 

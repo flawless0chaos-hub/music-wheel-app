@@ -144,6 +144,35 @@ def init_album():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@app.route('/api/album/delete', methods=['POST'])
+def delete_album():
+    """Delete an album from R2 storage"""
+    try:
+        if not storage_manager:
+            return jsonify({'status': 'error', 'message': 'Storage not initialized'}), 500
+        
+        data = request.json
+        album_name = data.get('album')
+        
+        if not album_name:
+            return jsonify({'status': 'error', 'message': 'Album name required'}), 400
+        
+        print(f"\n🗑️ Deleting album: {album_name}")
+        
+        storage_manager.delete_album(album_name)
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Album "{album_name}" deleted successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error initializing album: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 @app.route('/api/upload/track', methods=['POST'])
 def upload_track():
     """Upload track files or YouTube links to R2 storage"""

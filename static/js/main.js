@@ -390,8 +390,9 @@ class MusicWheelApp {
         
         container.innerHTML = this.albumStyles.map((style, idx) => `
             <div class="style-dot" data-style="${style.key}">
-                <div class="style-circle" style="background: ${style.color};"></div>
-                <div class="style-label">${style.name}</div>
+                <div class="style-circle" style="background: ${style.color};">
+                    <span class="style-label">${style.name}</span>
+                </div>
             </div>
         `).join('');
         
@@ -551,14 +552,17 @@ class MusicWheelApp {
     updatePlayButton(isPlaying) {
         const playIcon = document.getElementById('playIcon');
         const pauseIcon = document.getElementById('pauseIcon');
+        const centerBtn = document.getElementById('centerPlayBtn');
         
         if (playIcon && pauseIcon) {
             if (isPlaying) {
                 playIcon.style.display = 'none';
                 pauseIcon.style.display = 'block';
+                if (centerBtn) centerBtn.classList.add('playing');
             } else {
                 playIcon.style.display = 'block';
                 pauseIcon.style.display = 'none';
+                if (centerBtn) centerBtn.classList.remove('playing');
             }
         }
     }

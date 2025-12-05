@@ -113,14 +113,29 @@ const uploadManager = {
                 list.innerHTML = '<div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.5);">No albums found in Drive</div>';
             } else {
                 list.innerHTML = result.albums.map(albumName => `
-                    <div class="album-item" data-album-name="${albumName}">
-                        <div class="album-item-name">${albumName}</div>
-                        <div class="album-item-info">Saved in Google Drive</div>
+                    <div class="album-item" data-album-name="${albumName}" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1; cursor: pointer;" class="album-clickable">
+                            <div class="album-item-name">${albumName}</div>
+                            <div class="album-item-info">Saved in Google Drive</div>
+                        </div>
+                        <button class="btn btn-secondary delete-album-btn" data-album="${albumName}" style="background: rgba(255,0,0,0.2); border-color: rgba(255,0,0,0.4); color: #ff4444; padding: 8px 16px;">
+                            🗑️ Delete
+                        </button>
                     </div>
                 `).join('');
                 
-                document.querySelectorAll('.album-item').forEach(item => {
-                    item.addEventListener('click', () => this.loadAlbum(item.dataset.albumName));
+                // Add click listeners for loading albums
+                document.querySelectorAll('.album-clickable').forEach(item => {
+                    const albumName = item.closest('.album-item').dataset.albumName;
+                    item.addEventListener('click', () => this.loadAlbum(albumName));
+                });
+                
+                // Add click listeners for delete buttons
+                document.querySelectorAll('.delete-album-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.deleteAlbum(btn.dataset.album);
+                    });
                 });
             }
         } catch (error) {
@@ -193,6 +208,38 @@ const uploadManager = {
     
     loadSavedAlbums() {
         // Albums loaded via storage class
+    },
+    
+    async deleteAlbum(albumName) {
+        const confirmed = confirm(`Are you sure you want to delete "${albumName}"?\n\nThis action cannot be undone!`);
+        if (!confirmed) return;
+        
+        try {
+            this.ui.showProgressModal('Deleting Album');
+            this.ui.updateProgress(0, 1, `Deleting "${albumName}"...`);
+            
+            const response = await fetch('/api/album/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ album: albumName })
+            });
+            
+            const result = await response.json();
+            
+            this.ui.hideProgressModal();
+            
+            if (result.status === 'success') {
+                alert(`✅ Album "${albumName}" deleted successfully!`);
+                // Reload the album list
+                this.openSelectAlbumModal();
+            } else {
+                alert(`❌ Failed to delete album: ${result.message}`);
+            }
+        } catch (error) {
+            console.error('Error deleting album:', error);
+            this.ui.hideProgressModal();
+            alert(`❌ Error deleting album: ${error.message}`);
+        }
     },
     
     changeTrackCount(delta) {

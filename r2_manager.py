@@ -357,6 +357,39 @@ class R2Manager:
             print(f"Error listing albums: {e}")
             return []
     
+    def delete_album(self, album_name):
+        """Delete an entire album from R2"""
+        try:
+            prefix = f'albums/{album_name}/'
+            
+            print(f"🗑️ Deleting all objects with prefix: {prefix}")
+            
+            # List all objects in the album folder
+            paginator = self.s3.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=prefix)
+            
+            deleted_count = 0
+            for page in pages:
+                if 'Contents' in page:
+                    # Delete in batches of 1000 (S3 limit)
+                    objects = [{'Key': obj['Key']} for obj in page['Contents']]
+                    
+                    if objects:
+                        response = self.s3.delete_objects(
+                            Bucket=self.bucket_name,
+                            Delete={'Objects': objects}
+                        )
+                        deleted_count += len(response.get('Deleted', []))
+            
+            print(f"✅ Deleted {deleted_count} objects from album: {album_name}")
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting album: {e}")
+            import traceback
+            traceback.print_exc()
+            raise Exception(f"Failed to delete album: {e}")
+    
     def store_youtube_link(self, album_name, track_number, file_type, style_key, video_id):
         """Store YouTube video ID as audio source"""
         try:
