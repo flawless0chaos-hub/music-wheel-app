@@ -16,7 +16,7 @@
 }
 
 /* ============================================
-   CENTER PLAY BUTTON - Enlarged with Icons
+   CENTER PLAY BUTTON - Smaller & Clean
    ============================================ */
 
 .center-play-btn {
@@ -24,8 +24,8 @@
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
-    width: 80px !important;
-    height: 80px !important;
+    width: 40px !important;
+    height: 40px !important;
     background: rgba(255, 255, 255, 0.95) !important;
     border: none !important;
     border-radius: 50% !important;
@@ -34,14 +34,14 @@
     justify-content: center !important;
     cursor: pointer !important;
     z-index: 150 !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     backdrop-filter: blur(10px) !important;
 }
 
 .center-play-btn:hover {
-    transform: translate(-50%, -50%) scale(1.08) !important;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+    transform: translate(-50%, -50%) scale(1.1) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 .center-play-btn:active {
@@ -51,17 +51,17 @@
 /* Play Icon */
 .center-play-btn #playIcon {
     display: block !important;
-    width: 32px !important;
-    height: 32px !important;
+    width: 16px !important;
+    height: 16px !important;
     color: #000000 !important;
-    margin-left: 4px !important;
+    margin-left: 2px !important;
 }
 
 /* Pause Icon */
 .center-play-btn #pauseIcon {
     display: none !important;
-    width: 28px !important;
-    height: 28px !important;
+    width: 14px !important;
+    height: 14px !important;
     color: #000000 !important;
 }
 
@@ -365,13 +365,18 @@ button, .btn, [role="button"] {
 
 @media (max-width: 768px) {
     .center-play-btn {
-        width: 70px !important;
-        height: 70px !important;
+        width: 36px !important;
+        height: 36px !important;
     }
     
     .center-play-btn #playIcon {
-        width: 28px !important;
-        height: 28px !important;
+        width: 14px !important;
+        height: 14px !important;
+    }
+    
+    .center-play-btn #pauseIcon {
+        width: 12px !important;
+        height: 12px !important;
     }
     
     .style-circle {

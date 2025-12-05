@@ -174,26 +174,36 @@ class WheelCanvas {
                 // Draw glow effect for hovered/active
                 if (isActive || isHovered) {
                     this.ctx.beginPath();
-                    this.ctx.arc(x, y, 24, 0, 2 * Math.PI);
-                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 24);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+                    this.ctx.arc(x, y, 28, 0, 2 * Math.PI);
+                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 28);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
                     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
                     this.ctx.fillStyle = gradient;
                     this.ctx.fill();
                 }
                 
-                // Draw main point
+                // Draw main point with gradient from color to white
+                const dotSize = isActive ? 16 : (isHovered ? 14 : 10);
                 this.ctx.beginPath();
-                this.ctx.arc(x, y, isActive ? 12 : (isHovered ? 10 : 6), 0, 2 * Math.PI);
-                this.ctx.fillStyle = isActive ? styleConfig.color : (isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.9)');
+                this.ctx.arc(x, y, dotSize, 0, 2 * Math.PI);
+                
+                // Create radial gradient from style color (center) to white (edge)
+                const dotGradient = this.ctx.createRadialGradient(x, y, 0, x, y, dotSize);
+                if (isActive) {
+                    dotGradient.addColorStop(0, styleConfig.color);
+                    dotGradient.addColorStop(0.6, styleConfig.color);
+                    dotGradient.addColorStop(1, '#ffffff');
+                } else {
+                    dotGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+                    dotGradient.addColorStop(1, 'rgba(255, 255, 255, 0.7)');
+                }
+                this.ctx.fillStyle = dotGradient;
                 this.ctx.fill();
                 
-                // Add border for active point
-                if (isActive) {
-                    this.ctx.strokeStyle = '#ffffff';
-                    this.ctx.lineWidth = 3;
-                    this.ctx.stroke();
-                }
+                // Add subtle border
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
             });
         });
     }
