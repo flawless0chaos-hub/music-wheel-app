@@ -37,9 +37,9 @@ const CONFIG = {
         }
     },
     
-    // ⭐ CENTRALIZED RADIUS SETTINGS - שנה רק כאן!
-    defaultRadii: [150, 130, 110, 90, 70],
-    defaultMobileRadii: [150, 130, 110, 90, 70],
+    // ⭐ CENTRALIZED RADIUS SETTINGS - Desktop scaled 1.5x
+    defaultRadii: [225, 195, 165, 135, 105], // 150→225, 130→195, 110→165, 90→135, 70→105
+    defaultMobileRadii: [195, 169, 143, 117, 91], // Scaled 1.3x: 150→195, 130→169, 110→143, 90→117, 70→91
     
     // Visual settings
     lineOpacity: 0.08,

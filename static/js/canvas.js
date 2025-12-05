@@ -28,8 +28,8 @@ class WheelCanvas {
         this.isMobile = window.innerWidth <= CONFIG.mobileBreakpoint;
         const container = this.canvas.parentElement;
         
-        // Use fixed container size - no dynamic calculations
-        this.canvasSize = this.isMobile ? 500 : 600;
+        // Canvas size scaled: Desktop 1.5x (600→900), Mobile 1.3x (500→650)
+        this.canvasSize = this.isMobile ? 650 : 900;
         
         // Use high DPI for crisp rendering on retina displays
         const dpr = window.devicePixelRatio || 1;
@@ -174,16 +174,22 @@ class WheelCanvas {
                 // Draw glow effect for hovered/active
                 if (isActive || isHovered) {
                     this.ctx.beginPath();
-                    this.ctx.arc(x, y, 28, 0, 2 * Math.PI);
-                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 28);
+                    this.ctx.arc(x, y, 32, 0, 2 * Math.PI);
+                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 32);
                     gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
                     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
                     this.ctx.fillStyle = gradient;
                     this.ctx.fill();
                 }
                 
-                // Draw main point with gradient from color to white
-                const dotSize = isActive ? 16 : (isHovered ? 14 : 10);
+                // Calculate dot size with 2px minimum spacing guarantee
+                // For 8 tracks, circumference = 2πr, space per segment = 2πr/16
+                // Dot should be smaller than (space - 4px) to ensure 2px gaps on each side
+                const circumference = 2 * Math.PI * radius;
+                const spacePerSegment = circumference / (this.numTracks * 2);
+                const maxDotSize = Math.max(6, Math.min(14, (spacePerSegment - 4) / 2));
+                
+                const dotSize = isActive ? maxDotSize : (isHovered ? maxDotSize * 0.85 : maxDotSize * 0.7);
                 this.ctx.beginPath();
                 this.ctx.arc(x, y, dotSize, 0, 2 * Math.PI);
                 
@@ -217,6 +223,9 @@ class WheelCanvas {
             this.getRadius(styleKeys[0]) * 1.18 : 
             200;
         
+        // Icon size: 2.5x for desktop (20 → 50), 1.3x for mobile (20 → 26)
+        const iconSize = this.isMobile ? 26 : 50;
+        
         Object.entries(this.albumData.tracks).forEach(([segment, track]) => {
             const segmentNum = parseInt(segment);
             const angle = ((segmentNum - 1) * 2 * Math.PI / numSegments) - Math.PI / 2;
@@ -231,7 +240,7 @@ class WheelCanvas {
                 return;
             }
             
-            this.ctx.font = '20px Arial';
+            this.ctx.font = `${iconSize}px Arial`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = '#ffffff';
