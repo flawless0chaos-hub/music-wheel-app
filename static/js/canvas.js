@@ -108,10 +108,10 @@ class WheelCanvas {
     drawRadialLines() {
         const numLines = this.numTracks * 2;
         
-        // ✅ Get the outermost ring radius
+        // ✅ Get the outermost ring radius - same as actual ring
         const styleKeys = Object.keys(CONFIG.styles);
         const maxRadius = styleKeys.length > 0 ? 
-            this.getRadius(styleKeys[0]) * 1.15 : 
+            this.getRadius(styleKeys[0]) : 
             200;
         
         for (let i = 0; i < numLines; i++) {
@@ -150,7 +150,7 @@ class WheelCanvas {
         });
     }
     
-    // ✅ Draw white points ONLY where MP3 exists
+    // ✅ Draw white points ONLY where MP3 OR YouTube exists
     drawPoints() {
         if (!this.albumData) return;
         
@@ -161,8 +161,9 @@ class WheelCanvas {
             const angle = ((segmentNum - 1) * 2 * Math.PI / numSegments) - Math.PI / 2;
             
             Object.entries(CONFIG.styles).forEach(([styleKey, styleConfig]) => {
-                // ✅ FIXED: Check for 'url' instead of 'audio_url'
-                if (!track.styles[styleKey] || !track.styles[styleKey].url) return;
+                const styleData = track.styles[styleKey];
+                // ✅ Check for either MP3 url OR YouTube ID
+                if (!styleData || (!styleData.url && !styleData.youtube_id)) return;
                 
                 const radius = this.getRadius(styleKey);
                 const x = this.centerX + Math.cos(angle) * radius;

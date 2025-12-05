@@ -117,7 +117,16 @@
         /* Modal */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
         .modal.show { display: flex; }
-        .modal-content { background: #111; border-radius: 12px; padding: 30px; width: 500px; max-width: 90%; border: 1px solid #222; }
+        .modal-content { 
+            background: #111; 
+            border-radius: 12px; 
+            padding: 30px; 
+            width: 500px; 
+            max-width: 90%; 
+            max-height: 90vh; /* Add max-height */
+            overflow-y: auto; /* Enable scrolling on modal itself */
+            border: 1px solid #222; 
+        }
         .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
         .modal-subtitle { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; }
         .file-drop-zone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
@@ -126,7 +135,7 @@
         .modal-actions { display: flex; gap: 10px; }
         .modal-actions .btn { flex: 1; }
         
-        .album-list { max-height: 400px; overflow-y: auto; }
+        .album-list { overflow-y: visible; } /* Parent modal-content handles scrolling */
         .album-item { padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
         .album-item:hover { border-color: #ff1493; background: rgba(255,20,147,0.05); }
         .album-item-name { font-size: 14px; font-weight: 600; margin-bottom: 5px; }

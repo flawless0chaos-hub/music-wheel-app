@@ -74,13 +74,13 @@
 }
 
 /* ============================================
-   VOLUME CONTROL - Circular Button with Tongue
+   VOLUME CONTROL - Circular Button Higher Up
    ============================================ */
 
 .volume-toggle {
     position: fixed !important;
     right: 20px !important;
-    bottom: 20px !important;
+    bottom: 140px !important; /* Raised from 20px to 140px */
     width: 56px !important;
     height: 56px !important;
     background: rgba(255, 255, 255, 0.12) !important;
@@ -114,7 +114,7 @@
 .volume-control {
     position: fixed !important;
     right: 20px !important;
-    bottom: 85px !important;
+    bottom: 205px !important; /* Adjusted relative to new button position */
     width: 56px !important;
     display: flex !important;
     flex-direction: column !important;
@@ -171,13 +171,13 @@
 }
 
 /* ============================================
-   CATEGORIES BUTTON - Pop-out Circles
+   CATEGORIES BUTTON - Higher Up with New Icon
    ============================================ */
 
 .style-toggle {
     position: fixed !important;
     left: 20px !important;
-    bottom: 20px !important;
+    bottom: 140px !important; /* Raised from 20px to 140px */
     width: 56px !important;
     height: 56px !important;
     background: rgba(255, 255, 255, 0.12) !important;
@@ -211,7 +211,7 @@
 .bottom-section {
     position: fixed !important;
     left: 20px !important;
-    bottom: 85px !important;
+    bottom: 205px !important; /* Adjusted relative to new button position */
     display: flex !important;
     flex-direction: column !important;
     gap: 12px !important;
