@@ -1,668 +1,329 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>העלאת אלבום - Music Wheel</title>
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Music Wheel Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Rubik', sans-serif; 
-            background: #0a0a0a; 
-            color: #fff; 
-            padding: 20px;
-            min-height: 100vh;
-        }
+        body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff; overflow: hidden; }
         
-        .container { max-width: 1200px; margin: 0 auto; }
+        /* Top Bar */
+        .top-bar { height: 60px; background: #111; border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; }
+        .top-bar h1 { font-size: 18px; font-weight: 600; }
+        .top-bar-actions { display: flex; gap: 10px; }
         
-        h1 { 
-            text-align: center; 
-            font-size: 32px; 
-            margin-bottom: 40px;
-            background: linear-gradient(135deg, #ff1493, #ff69b4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        /* Buttons */
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-family: inherit; color: white; }
+        .btn-primary { background: linear-gradient(135deg, #ff1493, #ff69b4); box-shadow: 0 2px 8px rgba(255, 20, 147, 0.3); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary:hover { box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         
-        .card {
-            background: #111;
-            border: 1px solid #222;
-            border-radius: 12px;
-            padding: 30px;
-            margin-bottom: 30px;
-        }
+        /* Stages */
+        .stage { display: none; height: calc(100vh - 60px); }
+        .stage.active { display: flex; }
         
-        .card-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: #ff1493;
-        }
+        /* Initial Stage */
+        .initial-stage { flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
+        .initial-container { max-width: 600px; width: 100%; }
+        .initial-title { font-size: 32px; font-weight: 700; text-align: center; margin-bottom: 40px; }
+        .option-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .option-card { padding: 40px 30px; background: #0f0f0f; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 16px; cursor: pointer; text-align: center; transition: all 0.3s; }
+        .option-card:hover { border-color: #ff1493; background: rgba(255, 20, 147, 0.05); transform: translateY(-5px); box-shadow: 0 10px 30px rgba(255, 20, 147, 0.2); }
+        .option-icon { font-size: 48px; margin-bottom: 20px; }
+        .option-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+        .option-desc { font-size: 13px; color: rgba(255,255,255,0.6); }
         
-        .form-group {
-            margin-bottom: 20px;
-        }
+        /* Setup Stage */
+        .setup-stage { flex-direction: column; align-items: center; justify-content: center; padding: 40px; overflow-y: auto; }
+        .setup-container { max-width: 900px; width: 100%; }
+        .setup-section { background: #0f0f0f; border: 1px solid #222; border-radius: 12px; padding: 30px; margin-bottom: 30px; }
+        .setup-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #ff1493; text-transform: uppercase; letter-spacing: 1px; }
+        .album-name-input { width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white; font-size: 16px; font-family: inherit; }
+        .album-name-input::placeholder { color: rgba(255,255,255,0.4); }
+        .album-name-input:focus { outline: none; border-color: #ff1493; background: rgba(255,255,255,0.05); }
         
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            font-size: 14px;
-        }
+        .tracks-count-section { display: flex; align-items: center; justify-content: space-between; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 8px; }
+        .tracks-count-label { font-size: 14px; font-weight: 500; }
+        .tracks-count-controls { display: flex; align-items: center; gap: 15px; }
+        .count-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s; }
+        .count-btn:hover:not(:disabled) { background: rgba(255,20,147,0.2); border-color: #ff1493; }
+        .count-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .count-display { font-size: 20px; font-weight: 700; min-width: 40px; text-align: center; }
         
-        input[type="text"],
-        input[type="number"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: white;
-            font-size: 14px;
-            font-family: inherit;
-        }
+        .style-list { display: flex; flex-direction: column; gap: 15px; }
+        .style-item { display: grid; grid-template-columns: 40px 1fr 120px 40px; gap: 15px; align-items: center; padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; }
+        .style-number { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-weight: 600; color: rgba(255,255,255,0.5); }
+        .style-input { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white; font-size: 14px; font-family: inherit; }
+        .style-input::placeholder { color: rgba(255,255,255,0.4); }
+        .style-input:focus { outline: none; border-color: #ff1493; background: rgba(255,255,255,0.05); }
+        .color-picker { width: 120px; height: 40px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer; background: transparent; }
+        .color-preview { width: 40px; height: 40px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.2); }
         
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #ff1493;
-            background: rgba(255,255,255,0.08);
-        }
+        /* Progress Overlay */
+        .progress-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .progress-overlay.show { display: flex; }
+        .progress-container { max-width: 500px; width: 90%; text-align: center; }
+        .progress-title { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+        .progress-subtitle { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 30px; }
+        .progress-bar-wrapper { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #ff1493, #ff69b4); border-radius: 4px; width: 0%; transition: width 0.3s ease; position: relative; }
+        .progress-bar-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .progress-text { font-size: 13px; color: rgba(255,255,255,0.8); margin-bottom: 5px; }
+        .progress-percentage { font-size: 32px; font-weight: 700; color: #ff1493; }
         
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 15px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 8px;
-        }
+        /* Manager Stage - NEW DESIGN */
+        .manager-stage { flex-direction: column; overflow-y: auto; }
+        .manager-header { background: #0f0f0f; padding: 20px 30px; border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; }
+        .track-nav { display: flex; align-items: center; gap: 20px; }
+        .track-nav-label { font-size: 12px; color: rgba(255,255,255,0.5); text-transform: uppercase; }
+        .track-nav-display { font-size: 24px; font-weight: 700; }
+        .track-nav-buttons { display: flex; gap: 10px; }
+        .nav-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-size: 16px; }
+        .nav-btn:hover:not(:disabled) { background: rgba(255,20,147,0.2); border-color: #ff1493; }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         
-        input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
+        .track-info-section { padding: 30px; background: #0a0a0a; }
+        .track-info-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .icon-upload { width: 80px; height: 80px; border-radius: 12px; background: rgba(255,255,255,0.03); border: 2px dashed rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; overflow: hidden; }
+        .icon-upload:hover { border-color: #ff1493; background: rgba(255,20,147,0.05); }
+        .icon-upload img { width: 100%; height: 100%; object-fit: cover; }
+        .icon-placeholder { font-size: 32px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        .input-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
+        .input-group input { padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white; font-size: 14px; font-family: inherit; }
+        .input-group input::placeholder { color: rgba(255,255,255,0.4); }
+        .input-group input:focus { outline: none; border-color: #ff1493; background: rgba(255,255,255,0.05); }
         
-        .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-family: inherit;
-        }
+        /* NEW TABLE DESIGN */
+        .files-table { width: 100%; border-collapse: collapse; }
+        .files-table thead th { text-align: left; padding: 12px; background: rgba(255,255,255,0.02); border-bottom: 2px solid rgba(255,255,255,0.1); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.5); }
+        .files-table tbody td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .style-name { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+        .style-color-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .upload-cell { display: flex; gap: 10px; }
+        .upload-btn { padding: 6px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+        .upload-btn:hover { background: rgba(255,20,147,0.1); border-color: #ff1493; }
+        .upload-btn.uploaded { background: rgba(29,169,160,0.2); border-color: #1da9a0; color: #1da9a0; }
+        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .status-badge.empty { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); }
+        .status-badge.partial { background: rgba(255,165,0,0.2); color: #ffa500; }
+        .status-badge.complete { background: rgba(29,169,160,0.2); color: #1da9a0; }
         
-        .btn-primary {
-            background: linear-gradient(135deg, #ff1493, #ff69b4);
-            color: white;
-        }
+        /* Modal */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: #111; border-radius: 12px; padding: 30px; width: 500px; max-width: 90%; border: 1px solid #222; }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+        .modal-subtitle { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; }
+        .file-drop-zone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
+        .file-drop-zone:hover { border-color: #ff1493; background: rgba(255,20,147,0.05); }
+        .file-info { font-size: 12px; color: #ff1493; margin-top: 10px; word-break: break-all; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions .btn { flex: 1; }
         
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4);
-        }
-        
-        .btn-secondary {
-            background: rgba(255,255,255,0.1);
-            color: white;
-        }
-        
-        .styles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-        
-        .style-item {
-            padding: 15px;
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .style-color {
-            width: 40px;
-            height: 40px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 2px solid rgba(255,255,255,0.2);
-        }
-        
-        .style-name {
-            flex: 1;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 6px;
-            color: white;
-            font-size: 13px;
-        }
-        
-        .remove-style {
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: rgba(255,0,0,0.2);
-            border: 1px solid rgba(255,0,0,0.4);
-            color: #ff4444;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .add-style-btn {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255,20,147,0.1);
-            border: 2px dashed rgba(255,20,147,0.3);
-            border-radius: 8px;
-            color: #ff1493;
-            cursor: pointer;
-            font-weight: 600;
-            margin-top: 15px;
-        }
-        
-        .tracks-section {
-            margin-top: 30px;
-        }
-        
-        .track-card {
-            background: rgba(255,255,255,0.02);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .track-header {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 15px;
-            color: #ff69b4;
-        }
-        
-        .track-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .upload-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .tab {
-            flex: 1;
-            padding: 10px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 6px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .tab.active {
-            background: rgba(255,20,147,0.2);
-            border-color: #ff1493;
-            color: #ff1493;
-        }
-        
-        .upload-option {
-            display: none;
-        }
-        
-        .upload-option.active {
-            display: block;
-        }
-        
-        .file-input-wrapper {
-            position: relative;
-            padding: 40px;
-            background: rgba(255,255,255,0.03);
-            border: 2px dashed rgba(255,255,255,0.2);
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-        }
-        
-        .file-input-wrapper:hover {
-            border-color: #ff1493;
-            background: rgba(255,20,147,0.05);
-        }
-        
-        .file-input-wrapper input[type="file"] {
-            position: absolute;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-        }
-        
-        .progress {
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(29,169,160,0.1);
-            border: 1px solid rgba(29,169,160,0.3);
-            border-radius: 8px;
-            display: none;
-        }
-        
-        .progress.show {
-            display: block;
-        }
-        
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #ff1493, #ff69b4);
-            border-radius: 4px;
-            width: 0%;
-            transition: width 0.3s;
-        }
-        
-        .success-message {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(29,169,160,0.2);
-            border: 1px solid rgba(29,169,160,0.4);
-            border-radius: 8px;
-            color: #1da9a0;
-            text-align: center;
-            display: none;
-        }
-        
-        .success-message.show {
-            display: block;
-        }
+        .album-list { max-height: 400px; overflow-y: auto; }
+        .album-item { padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
+        .album-item:hover { border-color: #ff1493; background: rgba(255,20,147,0.05); }
+        .album-item-name { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
+        .album-item-info { font-size: 11px; color: rgba(255,255,255,0.6); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🎵 העלאת אלבום חדש</h1>
-        
-        <!-- Album Setup -->
-        <div class="card">
-            <div class="card-title">הגדרות אלבום</div>
-            
-            <div class="form-group">
-                <label>שם האלבום</label>
-                <input type="text" id="albumName" placeholder="הכנס שם אלבום...">
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <h1>🎵 Music Wheel Manager</h1>
+        <div class="top-bar-actions">
+            <button class="btn btn-secondary" id="backBtn" style="display: none;">Back</button>
+            <button class="btn btn-primary" id="nextBtn">Next</button>
+        </div>
+    </div>
+
+    <!-- Progress Overlay -->
+    <div class="progress-overlay" id="progressOverlay">
+        <div class="progress-container">
+            <div class="progress-title">Creating Album Structure</div>
+            <div class="progress-subtitle" id="progressSubtitle">Please wait...</div>
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
             </div>
-            
-            <div class="form-group">
-                <label>מספר שירים</label>
-                <input type="number" id="trackCount" value="8" min="1" max="20">
+            <div class="progress-text" id="progressText">Initializing...</div>
+            <div class="progress-percentage" id="progressPercentage">0%</div>
+        </div>
+    </div>
+
+    <!-- Stage 1: Initial -->
+    <div class="stage initial-stage active" id="initialStage">
+        <div class="initial-container">
+            <h1 class="initial-title">Welcome to Music Wheel Manager</h1>
+            <div class="option-cards">
+                <div class="option-card" id="newAlbumCard">
+                    <div class="option-icon">✨</div>
+                    <div class="option-title">Create New Album</div>
+                    <div class="option-desc">Start fresh with a new music album</div>
+                </div>
+                <div class="option-card" id="existingAlbumCard">
+                    <div class="option-icon">📂</div>
+                    <div class="option-title">Edit Existing Album</div>
+                    <div class="option-desc">Continue working on saved albums</div>
+                </div>
             </div>
-            
-            <div class="form-group">
-                <div class="checkbox-group">
-                    <input type="checkbox" id="useTransitions">
-                    <label for="useTransitions" style="margin: 0;">האם להשתמש במעברונים (Transitions) בין סגנונות?</label>
+        </div>
+    </div>
+
+    <!-- Stage 2: Setup -->
+    <div class="stage setup-stage" id="setupStage">
+        <div class="setup-container">
+            <div class="setup-section">
+                <h2>1. Album Name</h2>
+                <input type="text" class="album-name-input" id="albumName" placeholder="Enter your album name...">
+            </div>
+            <div class="setup-section">
+                <h2>2. Number of Tracks</h2>
+                <div class="tracks-count-section">
+                    <div class="tracks-count-label">How many songs in this album?</div>
+                    <div class="tracks-count-controls">
+                        <button class="count-btn" id="decreaseBtn">-</button>
+                        <div class="count-display" id="trackCount">8</div>
+                        <button class="count-btn" id="increaseBtn">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="setup-section">
+                <h2>3. Transitions</h2>
+                <div class="tracks-count-section">
+                    <div class="tracks-count-label">Use transitions between styles?</div>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="useTransitions" style="width: 24px; height: 24px; cursor: pointer;">
+                        <span>Enable Transitions</span>
+                    </label>
+                </div>
+            </div>
+            <div class="setup-section">
+                <h2>4. Number of Music Styles</h2>
+                <div class="tracks-count-section">
+                    <div class="tracks-count-label">How many music styles/categories?</div>
+                    <div class="tracks-count-controls">
+                        <button class="count-btn" id="decreaseStylesBtn">-</button>
+                        <div class="count-display" id="styleCount">5</div>
+                        <button class="count-btn" id="increaseStylesBtn">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="setup-section">
+                <h2>5. Configure Music Styles</h2>
+                <div class="style-list" id="styleList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stage 3: Manager (NEW DESIGN) -->
+    <div class="stage manager-stage" id="managerStage">
+        <div class="manager-header">
+            <div class="track-nav">
+                <div>
+                    <div class="track-nav-label">Current Track</div>
+                    <div class="track-nav-display"><span id="currentTrack">1</span>/<span id="totalTracks">8</span></div>
+                </div>
+                <div class="track-nav-buttons">
+                    <button class="nav-btn" id="prevBtn">◀</button>
+                    <button class="nav-btn" id="nextTrackBtn">▶</button>
                 </div>
             </div>
         </div>
         
-        <!-- Styles Setup -->
-        <div class="card">
-            <div class="card-title">הגדרת סגנונות / קטגוריות</div>
-            <p style="color: rgba(255,255,255,0.6); margin-bottom: 15px;">
-                כל שיר יכלול מספר סגנונות שונים. הגדר כמה סגנונות שאתה רוצה!
-            </p>
-            
-            <div class="styles-grid" id="stylesGrid">
-                <!-- Styles will be added here dynamically -->
+        <div class="track-info-section">
+            <!-- Track Info -->
+            <div class="track-info-grid">
+                <div class="icon-upload" id="iconUploadBtn">
+                    <span class="icon-placeholder" id="iconPreview">🎵</span>
+                    <input type="file" id="iconInput" accept="image/*" style="display:none">
+                </div>
+                <div class="input-group">
+                    <label>Song Name</label>
+                    <input type="text" id="songName" placeholder="Enter song name...">
+                </div>
+                <div class="input-group">
+                    <label>Artist</label>
+                    <input type="text" id="artistName" placeholder="Enter artist name...">
+                </div>
             </div>
             
-            <button class="add-style-btn" id="addStyleBtn">+ הוסף סגנון חדש</button>
-        </div>
-        
-        <!-- Create Album Button -->
-        <button class="btn btn-primary" id="createAlbumBtn" style="width: 100%; padding: 16px; font-size: 16px;">
-            צור אלבום והמשך להעלאת שירים
-        </button>
-        
-        <!-- Tracks Upload Section (Hidden until album is created) -->
-        <div id="tracksSection" style="display: none;">
-            <div class="tracks-section" id="tracksContainer">
-                <!-- Track cards will be added here dynamically -->
-            </div>
-            
-            <button class="btn btn-primary" id="uploadAllBtn" style="width: 100%; padding: 16px; font-size: 16px; margin-top: 20px;">
-                🚀 העלה את כל השירים
-            </button>
-        </div>
-        
-        <!-- Progress -->
-        <div class="progress" id="progressSection">
-            <div id="progressText">מעלה...</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
-        </div>
-        
-        <div class="success-message" id="successMessage">
-            ✅ האלבום הועלה בהצלחה! 
-            <a href="/" style="color: #1da9a0; text-decoration: underline;">חזור לנגן</a>
+            <!-- Files Table -->
+            <table class="files-table">
+                <thead>
+                    <tr>
+                        <th>Style</th>
+                        <th>Track (MP3/YouTube)</th>
+                        <th>Lyrics</th>
+                        <th>Transition (MP3/YouTube)</th>
+                        <th>Transition Lyrics</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="filesTableBody">
+                    <!-- Dynamic rows will be inserted here -->
+                </tbody>
+            </table>
         </div>
     </div>
-    
+
+    <!-- Upload Modal -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <div class="modal-title">Upload File</div>
+            <div class="modal-subtitle" id="modalSubtitle"></div>
+            
+            <!-- Tab Selection -->
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-secondary" id="fileTabBtn" style="flex: 1;">📁 Upload File</button>
+                <button class="btn btn-secondary" id="youtubeTabBtn" style="flex: 1;">▶️ YouTube Link</button>
+            </div>
+            
+            <!-- File Upload Option -->
+            <div id="fileUploadOption">
+                <div class="file-drop-zone" id="fileDropZone">
+                    <div style="font-size: 32px; margin-bottom: 10px;" id="modalIcon">🎵</div>
+                    <div style="font-size: 14px; color: rgba(255,255,255,0.7);" id="modalText">Click to upload file</div>
+                    <div class="file-info" id="fileName"></div>
+                    <input type="file" id="fileInput" style="display:none">
+                </div>
+            </div>
+            
+            <!-- YouTube Option -->
+            <div id="youtubeOption" style="display: none;">
+                <div style="padding: 20px; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.5);">YouTube URL</label>
+                    <input type="text" id="youtubeInput" placeholder="https://youtube.com/watch?v=..." style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white; font-size: 14px;">
+                    <div style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.4);">Paste a YouTube video URL</div>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Select Album Modal -->
+    <div class="modal" id="selectAlbumModal">
+        <div class="modal-content">
+            <div class="modal-title">Select Album to Edit</div>
+            <div class="album-list" id="albumList"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAlbumBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/upload-api.js"></script>
     <script src="/static/js/upload-storage.js"></script>
-    <script>
-        // Configuration
-        const defaultColors = [
-            '#d13b3b', '#9b3480', '#513c99', '#2373a1', '#1da9a0',
-            '#25a56a', '#c6a527', '#d96c27', '#c73a63', '#7c4199',
-            '#3498db', '#e74c3c', '#9b59b6', '#1abc9c', '#f39c12'
-        ];
-        
-        let styleCount = 0;
-        let currentAlbumName = '';
-        let albumStyles = [];
-        
-        // Initialize with 5 default styles
-        window.addEventListener('DOMContentLoaded', () => {
-            for (let i = 0; i < 5; i++) {
-                addStyle();
-            }
-        });
-        
-        // Add Style
-        document.getElementById('addStyleBtn').addEventListener('click', addStyle);
-        
-        function addStyle() {
-            const grid = document.getElementById('stylesGrid');
-            const colorIndex = styleCount % defaultColors.length;
-            const color = defaultColors[colorIndex];
-            
-            const styleDiv = document.createElement('div');
-            styleDiv.className = 'style-item';
-            styleDiv.dataset.index = styleCount;
-            
-            styleDiv.innerHTML = `
-                <input type="color" class="style-color" value="${color}">
-                <input type="text" class="style-name" placeholder="שם סגנון..." value="${getDefaultStyleName(styleCount)}">
-                <button class="remove-style" onclick="removeStyle(${styleCount})">×</button>
-            `;
-            
-            grid.appendChild(styleDiv);
-            styleCount++;
-        }
-        
-        function getDefaultStyleName(index) {
-            const names = ['Rock', 'Funk', 'Hip Hop', 'Blues', 'Jazz', 'Pop', 'Reggae', 'Metal', 'Classical', 'Electronic'];
-            return names[index] || `Style ${index + 1}`;
-        }
-        
-        function removeStyle(index) {
-            const style = document.querySelector(`[data-index="${index}"]`);
-            if (style && document.querySelectorAll('.style-item').length > 1) {
-                style.remove();
-            } else {
-                alert('חייב להיות לפחות סגנון אחד!');
-            }
-        }
-        
-        // Create Album
-        document.getElementById('createAlbumBtn').addEventListener('click', async () => {
-            const albumName = document.getElementById('albumName').value.trim();
-            const trackCount = parseInt(document.getElementById('trackCount').value);
-            const useTransitions = document.getElementById('useTransitions').checked;
-            
-            if (!albumName) {
-                alert('נא להכניס שם אלבום');
-                return;
-            }
-            
-            // Collect styles
-            const styles = [];
-            document.querySelectorAll('.style-item').forEach(item => {
-                const name = item.querySelector('.style-name').value.trim();
-                if (name) {
-                    styles.push(name);
-                }
-            });
-            
-            if (styles.length === 0) {
-                alert('נא להוסיף לפחות סגנון אחד');
-                return;
-            }
-            
-            // Store for later use
-            currentAlbumName = albumName;
-            albumStyles = styles;
-            
-            // Create album via API
-            try {
-                const response = await fetch('/api/album/init', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        album: albumName,
-                        trackCount: trackCount,
-                        styles: styles,
-                        useTransitions: useTransitions
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    alert('✅ האלבום נוצר בהצלחה!');
-                    generateTrackForms(trackCount, styles, useTransitions);
-                    document.getElementById('tracksSection').style.display = 'block';
-                    document.getElementById('createAlbumBtn').style.display = 'none';
-                } else {
-                    alert('שגיאה: ' + data.message);
-                }
-            } catch (error) {
-                alert('שגיאה בהתחברות לשרת: ' + error.message);
-            }
-        });
-        
-        // Generate Track Forms
-        function generateTrackForms(trackCount, styles, useTransitions) {
-            const container = document.getElementById('tracksContainer');
-            container.innerHTML = '';
-            
-            for (let i = 1; i <= trackCount; i++) {
-                const trackCard = document.createElement('div');
-                trackCard.className = 'track-card';
-                trackCard.dataset.track = i;
-                
-                let html = `
-                    <div class="track-header">🎵 שיר ${i}</div>
-                    <div class="track-info">
-                        <div class="form-group">
-                            <label>שם השיר</label>
-                            <input type="text" class="track-name" placeholder="שם השיר...">
-                        </div>
-                        <div class="form-group">
-                            <label>שם האמן</label>
-                            <input type="text" class="track-artist" placeholder="שם האמן...">
-                        </div>
-                    </div>
-                `;
-                
-                // Add upload options for each style
-                styles.forEach((style, idx) => {
-                    const styleKey = style.toLowerCase().replace(/ /g, '_');
-                    html += `
-                        <div style="margin-top: 20px;">
-                            <strong style="color: ${defaultColors[idx % defaultColors.length]}">סגנון: ${style}</strong>
-                            <div class="upload-tabs" style="margin-top: 10px;">
-                                <div class="tab active" onclick="switchTab(${i}, '${styleKey}', 'file')">📁 קובץ MP3</div>
-                                <div class="tab" onclick="switchTab(${i}, '${styleKey}', 'youtube')">▶️ YouTube</div>
-                            </div>
-                            
-                            <div class="upload-option active" id="upload-file-${i}-${styleKey}">
-                                <div class="file-input-wrapper">
-                                    <input type="file" accept="audio/*" data-track="${i}" data-style="${styleKey}" data-type="audio">
-                                    <div>📁 גרור קובץ MP3 או לחץ להעלאה</div>
-                                </div>
-                            </div>
-                            
-                            <div class="upload-option" id="upload-youtube-${i}-${styleKey}">
-                                <input type="text" placeholder="הכנס קישור YouTube..." 
-                                       data-track="${i}" data-style="${styleKey}" data-type="youtube"
-                                       style="margin-bottom: 10px;">
-                            </div>
-                            
-                            <div class="form-group" style="margin-top: 10px;">
-                                <label>מילים (אופציונלי)</label>
-                                <textarea rows="3" placeholder="מילי השיר..." 
-                                          data-track="${i}" data-style="${styleKey}" data-type="lyrics"></textarea>
-                            </div>
-                        </div>
-                    `;
-                    
-                    if (useTransitions) {
-                        html += `
-                            <div style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                                <strong style="font-size: 13px;">מעברון (Transition) - ${style}</strong>
-                                <div class="upload-tabs" style="margin-top: 10px;">
-                                    <div class="tab active" onclick="switchTab(${i}, '${styleKey}_transition', 'file')">📁 MP3</div>
-                                    <div class="tab" onclick="switchTab(${i}, '${styleKey}_transition', 'youtube')">▶️ YouTube</div>
-                                </div>
-                                
-                                <div class="upload-option active" id="upload-file-${i}-${styleKey}_transition">
-                                    <div class="file-input-wrapper" style="padding: 20px;">
-                                        <input type="file" accept="audio/*" data-track="${i}" data-style="${styleKey}" data-type="transition_audio">
-                                        <div>📁 מעברון MP3</div>
-                                    </div>
-                                </div>
-                                
-                                <div class="upload-option" id="upload-youtube-${i}-${styleKey}_transition">
-                                    <input type="text" placeholder="YouTube..." 
-                                           data-track="${i}" data-style="${styleKey}" data-type="transition_youtube">
-                                </div>
-                            </div>
-                        `;
-                    }
-                });
-                
-                trackCard.innerHTML = html;
-                container.appendChild(trackCard);
-            }
-        }
-        
-        // Switch between File/YouTube tabs
-        function switchTab(track, style, type) {
-            const tabs = document.querySelectorAll(`[onclick*="switchTab(${track}, '${style}',"]`);
-            const fileOption = document.getElementById(`upload-file-${track}-${style}`);
-            const youtubeOption = document.getElementById(`upload-youtube-${track}-${style}`);
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if (type === 'file') {
-                fileOption.classList.add('active');
-                youtubeOption.classList.remove('active');
-            } else {
-                fileOption.classList.remove('active');
-                youtubeOption.classList.add('active');
-            }
-        }
-        
-        // Upload All Tracks
-        document.getElementById('uploadAllBtn').addEventListener('click', async () => {
-            const tracks = document.querySelectorAll('.track-card');
-            const progress = document.getElementById('progressSection');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            
-            progress.classList.add('show');
-            
-            let completed = 0;
-            const total = tracks.length;
-            
-            for (const trackCard of tracks) {
-                const trackNum = parseInt(trackCard.dataset.track);
-                const trackName = trackCard.querySelector('.track-name').value || `Track ${trackNum}`;
-                const trackArtist = trackCard.querySelector('.track-artist').value || 'Unknown Artist';
-                
-                progressText.textContent = `מעלה שיר ${trackNum} מתוך ${total}...`;
-                
-                const formData = new FormData();
-                formData.append('album', currentAlbumName);
-                formData.append('number', trackNum);
-                formData.append('name', trackName);
-                formData.append('artist', trackArtist);
-                
-                // Collect files
-                const files = trackCard.querySelectorAll('input[type="file"]');
-                files.forEach(input => {
-                    if (input.files.length > 0) {
-                        const style = input.dataset.style;
-                        const type = input.dataset.type;
-                        const key = type === 'transition_audio' ? `transition_${style}` : `track_${style}`;
-                        formData.append(key, input.files[0]);
-                    }
-                });
-                
-                // Collect YouTube links
-                const youtubeInputs = trackCard.querySelectorAll('input[data-type="youtube"], input[data-type="transition_youtube"]');
-                youtubeInputs.forEach(input => {
-                    if (input.value.trim()) {
-                        const style = input.dataset.style;
-                        const type = input.dataset.type;
-                        const key = type === 'transition_youtube' ? `youtube_transition_${style}` : `youtube_track_${style}`;
-                        formData.append(key, input.value.trim());
-                    }
-                });
-                
-                // Collect lyrics
-                const lyrics = trackCard.querySelectorAll('textarea[data-type="lyrics"]');
-                lyrics.forEach(textarea => {
-                    if (textarea.value.trim()) {
-                        const style = textarea.dataset.style;
-                        const blob = new Blob([textarea.value], { type: 'text/plain' });
-                        formData.append(`lyrics_${style}`, blob, 'lyrics.txt');
-                    }
-                });
-                
-                // Upload
-                try {
-                    await fetch('/api/upload/track', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    completed++;
-                    const percent = Math.round((completed / total) * 100);
-                    progressFill.style.width = percent + '%';
-                    
-                } catch (error) {
-                    console.error('Error uploading track:', error);
-                }
-            }
-            
-            progressText.textContent = '✅ הסתיים!';
-            document.getElementById('successMessage').classList.add('show');
-        });
-    </script>
+    <script src="/static/js/upload-ui.js"></script>
+    <script src="/static/js/upload-main.js"></script>
 </body>
 </html>

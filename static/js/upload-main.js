@@ -8,6 +8,8 @@ const uploadManager = {
     
     currentStage: 'initial',
     totalTracksCount: 8,
+    stylesCount: 5, // NEW: Dynamic styles count
+    useTransitions: false, // NEW: Transitions toggle
     styles: [
         { name: 'Rock', color: '#d13b3b' },
         { name: 'Funk', color: '#9b3480' },
@@ -17,6 +19,7 @@ const uploadManager = {
     ],
     currentTrackIndex: 0,
     currentElement: null,
+    currentUploadMode: 'file', // NEW: 'file' or 'youtube'
     uploadedFiles: {},
     tracks: {},
     currentAlbumId: null,
@@ -35,12 +38,16 @@ const uploadManager = {
         document.getElementById('nextBtn').addEventListener('click', () => this.nextStage());
         document.getElementById('decreaseBtn').addEventListener('click', () => this.changeTrackCount(-1));
         document.getElementById('increaseBtn').addEventListener('click', () => this.changeTrackCount(1));
+        document.getElementById('decreaseStylesBtn').addEventListener('click', () => this.changeStylesCount(-1));
+        document.getElementById('increaseStylesBtn').addEventListener('click', () => this.changeStylesCount(1));
         document.getElementById('prevBtn').addEventListener('click', () => this.prevTrack());
         document.getElementById('nextTrackBtn').addEventListener('click', () => this.nextTrack());
         document.getElementById('iconUploadBtn').addEventListener('click', () => document.getElementById('iconInput').click());
         document.getElementById('iconInput').addEventListener('change', (e) => this.previewIcon(e));
         document.getElementById('fileDropZone').addEventListener('click', () => document.getElementById('fileInput').click());
         document.getElementById('fileInput').addEventListener('change', (e) => this.handleFileUpload(e));
+        document.getElementById('fileTabBtn').addEventListener('click', () => this.switchUploadMode('file'));
+        document.getElementById('youtubeTabBtn').addEventListener('click', () => this.switchUploadMode('youtube'));
         document.getElementById('cancelBtn').addEventListener('click', () => this.ui.hideModal('uploadModal'));
         document.getElementById('confirmBtn').addEventListener('click', () => this.confirmUpload());
         document.getElementById('cancelAlbumBtn').addEventListener('click', () => this.ui.hideModal('selectAlbumModal'));
@@ -196,6 +203,62 @@ const uploadManager = {
         }
     },
     
+    changeStylesCount(delta) {
+        const newCount = Math.max(3, Math.min(15, this.stylesCount + delta));
+        if (newCount !== this.stylesCount) {
+            this.stylesCount = newCount;
+            document.getElementById('styleCount').textContent = this.stylesCount;
+            this.updateStyles();
+        }
+    },
+    
+    updateStyles() {
+        const defaultColors = [
+            '#d13b3b', '#9b3480', '#513c99', '#2373a1', '#1da9a0',
+            '#25a56a', '#c6a527', '#d96c27', '#c73a63', '#7c4199',
+            '#3498db', '#e74c3c', '#9b59b6', '#1abc9c', '#f39c12'
+        ];
+        const styleNames = ['Rock', 'Funk', 'Hip Hop', 'Blues', 'Jazz', 'Pop', 'Reggae', 'Metal', 'Classical', 'Electronic', 'Country', 'Soul', 'R&B', 'Indie', 'Dance'];
+        
+        // Adjust styles array
+        while (this.styles.length < this.stylesCount) {
+            const idx = this.styles.length;
+            this.styles.push({
+                name: styleNames[idx] || `Style ${idx + 1}`,
+                color: defaultColors[idx % defaultColors.length]
+            });
+        }
+        while (this.styles.length > this.stylesCount) {
+            this.styles.pop();
+        }
+        
+        this.ui.generateStyleInputs(this.styles, document.getElementById('styleList'));
+    },
+    
+    switchUploadMode(mode) {
+        this.currentUploadMode = mode;
+        const fileTab = document.getElementById('fileTabBtn');
+        const youtubeTab = document.getElementById('youtubeTabBtn');
+        const fileOption = document.getElementById('fileUploadOption');
+        const youtubeOption = document.getElementById('youtubeOption');
+        
+        if (mode === 'file') {
+            fileTab.style.background = 'rgba(255,20,147,0.2)';
+            fileTab.style.borderColor = '#ff1493';
+            youtubeTab.style.background = 'rgba(255,255,255,0.05)';
+            youtubeTab.style.borderColor = 'rgba(255,255,255,0.1)';
+            fileOption.style.display = 'block';
+            youtubeOption.style.display = 'none';
+        } else {
+            youtubeTab.style.background = 'rgba(255,20,147,0.2)';
+            youtubeTab.style.borderColor = '#ff1493';
+            fileTab.style.background = 'rgba(255,255,255,0.05)';
+            fileTab.style.borderColor = 'rgba(255,255,255,0.1)';
+            fileOption.style.display = 'none';
+            youtubeOption.style.display = 'block';
+        }
+    },
+    
     async nextStage() {
         if (this.currentStage === 'setup') {
             const albumName = document.getElementById('albumName').value.trim();
@@ -212,7 +275,8 @@ const uploadManager = {
 
             // Initialize album on server
             console.log('🎵 Initializing album on server...');
-            const result = await this.api.initializeAlbum(albumName, this.totalTracksCount, this.styles);
+            this.useTransitions = document.getElementById('useTransitions').checked;
+            const result = await this.api.initializeAlbum(albumName, this.totalTracksCount, this.styles, this.useTransitions);
             
             if (!result.success) {
                 alert('Failed to initialize album: ' + result.error);
@@ -313,6 +377,40 @@ const uploadManager = {
     confirmUpload() {
         if (!this.currentElement) return;
 
+        // Handle YouTube upload
+        if (this.currentUploadMode === 'youtube') {
+            const youtubeUrl = document.getElementById('youtubeInput').value.trim();
+            if (!youtubeUrl) {
+                alert('Please enter a YouTube URL');
+                return;
+            }
+            
+            const { type, styleIdx, uploadType } = this.currentElement;
+            const key = `track${this.currentTrackIndex + 1}-${type}-${styleIdx}-${uploadType}`;
+            
+            // Store YouTube URL
+            this.uploadedFiles[key] = { youtube: youtubeUrl, name: 'YouTube Link' };
+            
+            const trackNum = this.currentTrackIndex + 1;
+            if (!this.tracks[trackNum]) {
+                this.tracks[trackNum] = { files: {} };
+            }
+            if (!this.tracks[trackNum].files) {
+                this.tracks[trackNum].files = {};
+            }
+            
+            this.tracks[trackNum].files[key] = { youtube: youtubeUrl };
+            
+            console.log(`✅ YouTube link added: ${youtubeUrl} → ${key}`);
+            
+            this.ui.hideModal('uploadModal');
+            this.currentElement = null;
+            document.getElementById('youtubeInput').value = '';
+            this.generateFilesTable();
+            return;
+        }
+
+        // Handle file upload
         const file = document.getElementById('fileInput').files[0];
         if (!file) {
             alert('Please select a file');
