@@ -445,8 +445,7 @@ class MusicWheelApp {
         
         // Play audio
         try {
-            const trackType = styleData.type || 'file';
-            await this.player.loadTrack(styleData.url, trackType);
+            await this.player.loadTrack(styleData.url);
             await this.player.play();
             this.updatePlayButton(true);
         } catch (error) {
@@ -480,8 +479,7 @@ class MusicWheelApp {
         const styleData = trackData.styles[newStyle];
         
         try {
-            const trackType = styleData.type || 'file';
-            await this.player.loadTrack(styleData.url, trackType);
+            await this.player.loadTrack(styleData.url);
             this.player.seek(currentTime);
             
             if (wasPlaying) {
