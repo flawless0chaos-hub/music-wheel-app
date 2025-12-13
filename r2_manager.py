@@ -302,18 +302,34 @@ class R2Manager:
                     }
                     
                     for style_key, style_data in track_info.get('styles', {}).items():
-                        if style_data.get('audio_url'):
-                            track_data['styles'][style_key] = {
-                                'url': style_data['audio_url'],
-                                'type': style_data.get('audio_type', 'file'),
-                                'youtube_id': style_data.get('youtube_id', ''),
+                        # Check if this style has audio (either file or YouTube)
+                        has_file_audio = style_data.get('audio_url')
+                        has_youtube = style_data.get('audio_type') == 'youtube' and style_data.get('youtube_id')
+                        
+                        if has_file_audio or has_youtube:
+                            style_track = {
+                                'audio_type': style_data.get('audio_type', 'file'),
                                 'lyrics_url': style_data.get('lyrics_url'),
                                 'uploaded': True
                             }
                             
+                            # Add URL only for file-based audio
+                            if has_file_audio:
+                                style_track['url'] = style_data.get('audio_url')
+                            
+                            # Add YouTube ID only for YouTube audio
+                            if has_youtube:
+                                style_track['youtube_id'] = style_data.get('youtube_id')
+                            
+                            track_data['styles'][style_key] = style_track
+                            
                             if use_transitions:
-                                track_data['styles'][style_key]['transition_url'] = style_data.get('transition_audio_url', '')
-                                track_data['styles'][style_key]['transition_type'] = style_data.get('transition_audio_type', 'file')
+                                has_transition_file = style_data.get('transition_audio_url')
+                                has_transition_youtube = style_data.get('transition_audio_type') == 'youtube' and style_data.get('transition_youtube_id')
+                                
+                                track_data['styles'][style_key]['transition_url'] = style_data.get('transition_audio_url') if has_transition_file else None
+                                track_data['styles'][style_key]['transition_audio_type'] = style_data.get('transition_audio_type', 'file')
+                                track_data['styles'][style_key]['transition_youtube_id'] = style_data.get('transition_youtube_id', '')
                                 track_data['styles'][style_key]['transition_lyrics_url'] = style_data.get('transition_lyrics_url', '')
                     
                     album_data['tracks'][str(track_num)] = track_data
@@ -349,6 +365,39 @@ class R2Manager:
             print(f"Error listing albums: {e}")
             return []
     
+    def delete_album(self, album_name):
+        """Delete an entire album from R2"""
+        try:
+            prefix = f'albums/{album_name}/'
+            
+            print(f"🗑️ Deleting all objects with prefix: {prefix}")
+            
+            # List all objects in the album folder
+            paginator = self.s3.get_paginator('list_objects_v2')
+            pages = paginator.paginate(Bucket=self.bucket_name, Prefix=prefix)
+            
+            deleted_count = 0
+            for page in pages:
+                if 'Contents' in page:
+                    # Delete in batches of 1000 (S3 limit)
+                    objects = [{'Key': obj['Key']} for obj in page['Contents']]
+                    
+                    if objects:
+                        response = self.s3.delete_objects(
+                            Bucket=self.bucket_name,
+                            Delete={'Objects': objects}
+                        )
+                        deleted_count += len(response.get('Deleted', []))
+            
+            print(f"✅ Deleted {deleted_count} objects from album: {album_name}")
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting album: {e}")
+            import traceback
+            traceback.print_exc()
+            raise Exception(f"Failed to delete album: {e}")
+    
     def store_youtube_link(self, album_name, track_number, file_type, style_key, video_id):
         """Store YouTube video ID as audio source"""
         try:
@@ -358,25 +407,22 @@ class R2Manager:
             if not track_info:
                 raise Exception("track_info.json not found")
             
-            youtube_url = f"https://www.youtube.com/watch?v={video_id}"
-            
             if style_key not in track_info['styles']:
                 track_info['styles'][style_key] = {}
             
             if file_type == 'audio':
-                track_info['styles'][style_key]['audio_url'] = youtube_url
+                # Don't store URL - just the ID and type
                 track_info['styles'][style_key]['audio_type'] = 'youtube'
                 track_info['styles'][style_key]['youtube_id'] = video_id
                 track_info['styles'][style_key]['uploaded'] = True
             elif file_type == 'transition_audio':
-                track_info['styles'][style_key]['transition_audio_url'] = youtube_url
                 track_info['styles'][style_key]['transition_audio_type'] = 'youtube'
                 track_info['styles'][style_key]['transition_youtube_id'] = video_id
             
             self._upload_json(track_info, track_info_path)
-            print(f"  ✅ YouTube link stored: {video_id}")
+            print(f"  ✅ YouTube ID stored: {video_id}")
             
-            return youtube_url
+            return f"youtube:{video_id}"
             
         except Exception as e:
             raise Exception(f"Error storing YouTube link: {e}")

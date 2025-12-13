@@ -8,38 +8,38 @@ const CONFIG = {
         rock: { 
             name: 'Rock', 
             color: '#d13b3b', 
-            radius: 150,  // From defaultRadii[0]
-            mobileRadius: 150  // From defaultMobileRadii[0]
+            radius: 225,  // Desktop 1.5x (150→225)
+            mobileRadius: 195  // Mobile 1.3x (150→195)
         },
         funk: { 
             name: 'Funk', 
             color: '#9b3480', 
-            radius: 130,  // From defaultRadii[1]
-            mobileRadius: 130  // From defaultMobileRadii[1]
+            radius: 195,  // Desktop 1.5x (130→195)
+            mobileRadius: 169  // Mobile 1.3x (130→169)
         },
         hiphop: { 
             name: 'Hip Hop', 
             color: '#513c99', 
-            radius: 110,  // From defaultRadii[2]
-            mobileRadius: 110  // From defaultMobileRadii[2]
+            radius: 165,  // Desktop 1.5x (110→165)
+            mobileRadius: 143  // Mobile 1.3x (110→143)
         },
         blues: { 
             name: 'Blues', 
             color: '#2373a1', 
-            radius: 90,  // From defaultRadii[3]
-            mobileRadius: 90  // From defaultMobileRadii[3]
+            radius: 135,  // Desktop 1.5x (90→135)
+            mobileRadius: 117  // Mobile 1.3x (90→117)
         },
         theatrical: { 
             name: 'Theatrical', 
             color: '#1da9a0', 
-            radius: 70,  // From defaultRadii[4]
-            mobileRadius: 70  // From defaultMobileRadii[4]
+            radius: 105,  // Desktop 1.5x (70→105)
+            mobileRadius: 91  // Mobile 1.3x (70→91)
         }
     },
     
-    // ⭐ CENTRALIZED RADIUS SETTINGS - שנה רק כאן!
-    defaultRadii: [150, 130, 110, 90, 70],
-    defaultMobileRadii: [150, 130, 110, 90, 70],
+    // ⭐ CENTRALIZED RADIUS SETTINGS - Desktop scaled 1.5x
+    defaultRadii: [225, 195, 165, 135, 105], // 150→225, 130→195, 110→165, 90→135, 70→105
+    defaultMobileRadii: [195, 169, 143, 117, 91], // Scaled 1.3x: 150→195, 130→169, 110→143, 90→117, 70→91
     
     // Visual settings
     lineOpacity: 0.08,

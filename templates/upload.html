@@ -117,7 +117,16 @@
         /* Modal */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
         .modal.show { display: flex; }
-        .modal-content { background: #111; border-radius: 12px; padding: 30px; width: 500px; max-width: 90%; border: 1px solid #222; }
+        .modal-content { 
+            background: #111; 
+            border-radius: 12px; 
+            padding: 30px; 
+            width: 500px; 
+            max-width: 90%; 
+            max-height: 90vh; /* Add max-height */
+            overflow-y: auto; /* Enable scrolling on modal itself */
+            border: 1px solid #222; 
+        }
         .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
         .modal-subtitle { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; }
         .file-drop-zone { border: 2px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
@@ -126,7 +135,7 @@
         .modal-actions { display: flex; gap: 10px; }
         .modal-actions .btn { flex: 1; }
         
-        .album-list { max-height: 400px; overflow-y: auto; }
+        .album-list { overflow-y: visible; } /* Parent modal-content handles scrolling */
         .album-item { padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; }
         .album-item:hover { border-color: #ff1493; background: rgba(255,20,147,0.05); }
         .album-item-name { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
@@ -194,7 +203,28 @@
                 </div>
             </div>
             <div class="setup-section">
-                <h2>3. Configure Music Styles (5)</h2>
+                <h2>3. Transitions</h2>
+                <div class="tracks-count-section">
+                    <div class="tracks-count-label">Use transitions between styles?</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="useTransitions" style="width: 24px; height: 24px; cursor: pointer;">
+                        <span style="cursor: pointer;" onclick="document.getElementById('useTransitions').click()">Enable Transitions</span>
+                    </div>
+                </div>
+            </div>
+            <div class="setup-section">
+                <h2>4. Number of Music Styles</h2>
+                <div class="tracks-count-section">
+                    <div class="tracks-count-label">How many music styles/categories?</div>
+                    <div class="tracks-count-controls">
+                        <button class="count-btn" id="decreaseStylesBtn">-</button>
+                        <div class="count-display" id="styleCount">5</div>
+                        <button class="count-btn" id="increaseStylesBtn">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="setup-section">
+                <h2>5. Configure Music Styles</h2>
                 <div class="style-list" id="styleList"></div>
             </div>
         </div>
@@ -237,9 +267,9 @@
                 <thead>
                     <tr>
                         <th>Style</th>
-                        <th>Track MP3</th>
+                        <th>Track (MP3/YouTube)</th>
                         <th>Lyrics</th>
-                        <th>Transition MP3</th>
+                        <th>Transition (MP3/YouTube)</th>
                         <th>Transition Lyrics</th>
                         <th>Status</th>
                     </tr>
@@ -256,12 +286,32 @@
         <div class="modal-content">
             <div class="modal-title">Upload File</div>
             <div class="modal-subtitle" id="modalSubtitle"></div>
-            <div class="file-drop-zone" id="fileDropZone">
-                <div style="font-size: 32px; margin-bottom: 10px;" id="modalIcon">🎵</div>
-                <div style="font-size: 14px; color: rgba(255,255,255,0.7);" id="modalText">Click to upload file</div>
-                <div class="file-info" id="fileName"></div>
-                <input type="file" id="fileInput" style="display:none">
+            
+            <!-- Tab Selection -->
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="btn btn-secondary" id="fileTabBtn" style="flex: 1;">📁 Upload File</button>
+                <button class="btn btn-secondary" id="youtubeTabBtn" style="flex: 1;">▶️ YouTube Link</button>
             </div>
+            
+            <!-- File Upload Option -->
+            <div id="fileUploadOption">
+                <div class="file-drop-zone" id="fileDropZone">
+                    <div style="font-size: 32px; margin-bottom: 10px;" id="modalIcon">🎵</div>
+                    <div style="font-size: 14px; color: rgba(255,255,255,0.7);" id="modalText">Click to upload file</div>
+                    <div class="file-info" id="fileName"></div>
+                    <input type="file" id="fileInput" style="display:none">
+                </div>
+            </div>
+            
+            <!-- YouTube Option -->
+            <div id="youtubeOption" style="display: none;">
+                <div style="padding: 20px; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 12px; text-transform: uppercase; color: rgba(255,255,255,0.5);">YouTube URL</label>
+                    <input type="text" id="youtubeInput" placeholder="https://youtube.com/watch?v=..." style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white; font-size: 14px;">
+                    <div style="margin-top: 8px; font-size: 11px; color: rgba(255,255,255,0.4);">Paste a YouTube video URL</div>
+                </div>
+            </div>
+            
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
                 <button class="btn btn-primary" id="confirmBtn">Confirm</button>
