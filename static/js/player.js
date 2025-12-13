@@ -124,121 +124,8 @@ class MusicPlayer {
         });
     }
     
-    // Load YouTube video (embed as iframe with hidden video)
-    async loadYouTube(videoId) {
-        console.log('🎬 Loading YouTube video:', videoId);
-        
-        return new Promise((resolve, reject) => {
-            // Stop current playback
-            this.pause();
-            
-            // Remove existing YouTube player
-            const existingPlayer = document.getElementById('youtube-player');
-            if (existingPlayer) {
-                existingPlayer.remove();
-            }
-            
-            // Create iframe container
-            const playerDiv = document.createElement('div');
-            playerDiv.id = 'youtube-player';
-            playerDiv.style.position = 'absolute';
-            playerDiv.style.top = '-9999px'; // Hide offscreen
-            playerDiv.style.left = '-9999px';
-            document.body.appendChild(playerDiv);
-            
-            // Load YouTube IFrame API if not loaded
-            if (!window.YT) {
-                const tag = document.createElement('script');
-                tag.src = 'https://www.youtube.com/iframe_api';
-                document.head.appendChild(tag);
-                
-                window.onYouTubeIframeAPIReady = () => {
-                    this.createYouTubePlayer(videoId, playerDiv, resolve, reject);
-                };
-            } else {
-                this.createYouTubePlayer(videoId, playerDiv, resolve, reject);
-            }
-        });
-    }
-    
-    createYouTubePlayer(videoId, container, resolve, reject) {
-        try {
-            // Destroy previous player
-            if (this.youtubePlayer) {
-                this.youtubePlayer.destroy();
-            }
-            
-            this.youtubePlayer = new YT.Player(container, {
-                height: '1',
-                width: '1',
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 0,
-                    controls: 0,
-                    disablekb: 1,
-                    fs: 0,
-                    modestbranding: 1,
-                    playsinline: 1
-                },
-                events: {
-                    onReady: (event) => {
-                        console.log('✅ YouTube player ready');
-                        this.isPlaying = false;
-                        resolve();
-                    },
-                    onStateChange: (event) => {
-                        if (event.data === YT.PlayerState.PLAYING) {
-                            this.isPlaying = true;
-                            this.startYouTubeProgressTracking();
-                        } else if (event.data === YT.PlayerState.PAUSED) {
-                            this.isPlaying = false;
-                            this.stopYouTubeProgressTracking();
-                        } else if (event.data === YT.PlayerState.ENDED) {
-                            this.isPlaying = false;
-                            if (this.onEnded) this.onEnded();
-                        }
-                    },
-                    onError: (event) => {
-                        console.error('YouTube player error:', event.data);
-                        reject(new Error('YouTube player error: ' + event.data));
-                    }
-                }
-            });
-        } catch (error) {
-            reject(error);
-        }
-    }
-    
-    startYouTubeProgressTracking() {
-        this.stopYouTubeProgressTracking();
-        this.youtubeProgressInterval = setInterval(() => {
-            if (this.youtubePlayer && this.youtubePlayer.getCurrentTime) {
-                this.currentTime = this.youtubePlayer.getCurrentTime();
-                this.duration = this.youtubePlayer.getDuration();
-                if (this.onTimeUpdate) {
-                    this.onTimeUpdate(this.currentTime, this.duration);
-                }
-            }
-        }, 100);
-    }
-    
-    stopYouTubeProgressTracking() {
-        if (this.youtubeProgressInterval) {
-            clearInterval(this.youtubeProgressInterval);
-            this.youtubeProgressInterval = null;
-        }
-    }
-    
     // Play the track
     async play() {
-        // YouTube player
-        if (this.youtubePlayer && this.youtubePlayer.playVideo) {
-            this.youtubePlayer.playVideo();
-            this.isPlaying = true;
-            return;
-        }
-        
-        // Tone.js
         if (this.useTone) {
             await Tone.start(); // Required for Tone.js
             if (this.player && this.player.loaded) {
@@ -247,7 +134,6 @@ class MusicPlayer {
                 this.startProgressTracking();
             }
         } else {
-            // Web Audio
             try {
                 await this.audio.play();
                 this.isPlaying = true;
@@ -259,21 +145,12 @@ class MusicPlayer {
     
     // Pause the track
     pause() {
-        // YouTube player
-        if (this.youtubePlayer && this.youtubePlayer.pauseVideo) {
-            this.youtubePlayer.pauseVideo();
-            this.isPlaying = false;
-            return;
-        }
-        
-        // Tone.js
         if (this.useTone) {
             if (this.player) {
                 this.player.stop();
             }
             this.stopProgressTracking();
         } else {
-            // Web Audio
             this.audio.pause();
         }
         this.isPlaying = false;
@@ -287,18 +164,9 @@ class MusicPlayer {
     
     // Seek to time
     seek(time) {
-        // YouTube player
-        if (this.youtubePlayer && this.youtubePlayer.seekTo) {
-            this.youtubePlayer.seekTo(time, true);
-            this.currentTime = time;
-            return;
-        }
-        
-        // Tone.js
         if (this.useTone && this.player) {
             this.player.seek(time);
         } else {
-            // Web Audio
             this.audio.currentTime = time;
         }
         this.currentTime = time;
@@ -308,12 +176,6 @@ class MusicPlayer {
     setVolume(vol) {
         this.volume = Math.max(0, Math.min(1, vol));
         
-        // YouTube player
-        if (this.youtubePlayer && this.youtubePlayer.setVolume) {
-            this.youtubePlayer.setVolume(this.volume * 100);
-        }
-        
-        // Tone.js
         if (this.useTone && this.player) {
             this.player.volume.value = Tone.gainToDb(this.volume);
         } else {

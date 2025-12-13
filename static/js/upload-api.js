@@ -8,7 +8,7 @@ class UploadAPI {
     }
 
     // Initialize album structure on server
-    async initializeAlbum(albumName, trackCount, styles, useTransitions = false) {
+    async initializeAlbum(albumName, trackCount, styles) {
         try {
             this.ui.showProgressModal('Creating Album');
             this.ui.updateProgress(0, trackCount, `Creating folder structure...`);
@@ -21,8 +21,7 @@ class UploadAPI {
                 body: JSON.stringify({
                     album: albumName,
                     trackCount: trackCount,
-                    styles: styleNames,
-                    useTransitions: useTransitions
+                    styles: styleNames
                 })
             });
 
@@ -101,27 +100,17 @@ class UploadAPI {
                 
                 const styleName = styles[styleIdx].name.toLowerCase().replace(/\s+/g, '_');
                 
-                // Handle YouTube links
-                if (file.youtube) {
-                    if (type === 'track') {
-                        formData.append(`youtube_track_${styleName}`, file.youtube);
-                    } else if (type === 'transition') {
-                        formData.append(`youtube_transition_${styleName}`, file.youtube);
+                if (type === 'track') {
+                    if (fileType === 'mp3') {
+                        formData.append(`track_${styleName}`, file);
+                    } else if (fileType === 'lyrics') {
+                        formData.append(`lyrics_${styleName}`, file);
                     }
-                } else {
-                    // Handle file uploads
-                    if (type === 'track') {
-                        if (fileType === 'mp3') {
-                            formData.append(`track_${styleName}`, file);
-                        } else if (fileType === 'lyrics') {
-                            formData.append(`lyrics_${styleName}`, file);
-                        }
-                    } else if (type === 'transition') {
-                        if (fileType === 'mp3') {
-                            formData.append(`transition_${styleName}`, file);
-                        } else if (fileType === 'lyrics') {
-                            formData.append(`transition_lyrics_${styleName}`, file);
-                        }
+                } else if (type === 'transition') {
+                    if (fileType === 'mp3') {
+                        formData.append(`transition_${styleName}`, file);
+                    } else if (fileType === 'lyrics') {
+                        formData.append(`transition_lyrics_${styleName}`, file);
                     }
                 }
 

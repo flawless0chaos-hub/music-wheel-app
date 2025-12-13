@@ -28,8 +28,8 @@ class WheelCanvas {
         this.isMobile = window.innerWidth <= CONFIG.mobileBreakpoint;
         const container = this.canvas.parentElement;
         
-        // Canvas size scaled: Desktop 1.5x (600→900), Mobile 1.3x (500→650)
-        this.canvasSize = this.isMobile ? 650 : 900;
+        // Use fixed container size - no dynamic calculations
+        this.canvasSize = this.isMobile ? 500 : 600;
         
         // Use high DPI for crisp rendering on retina displays
         const dpr = window.devicePixelRatio || 1;
@@ -108,13 +108,11 @@ class WheelCanvas {
     drawRadialLines() {
         const numLines = this.numTracks * 2;
         
-        // ✅ Get the MAXIMUM radius across all styles
+        // ✅ Get the outermost ring radius
         const styleKeys = Object.keys(CONFIG.styles);
-        let maxRadius = 200; // fallback
-        
-        if (styleKeys.length > 0) {
-            maxRadius = Math.max(...styleKeys.map(key => this.getRadius(key)));
-        }
+        const maxRadius = styleKeys.length > 0 ? 
+            this.getRadius(styleKeys[0]) * 1.15 : 
+            200;
         
         for (let i = 0; i < numLines; i++) {
             const angle = ((i * 2 * Math.PI / numLines) - Math.PI / 2);
@@ -152,7 +150,7 @@ class WheelCanvas {
         });
     }
     
-    // ✅ Draw white points ONLY where MP3 OR YouTube exists
+    // ✅ Draw white points ONLY where MP3 exists
     drawPoints() {
         if (!this.albumData) return;
         
@@ -163,9 +161,8 @@ class WheelCanvas {
             const angle = ((segmentNum - 1) * 2 * Math.PI / numSegments) - Math.PI / 2;
             
             Object.entries(CONFIG.styles).forEach(([styleKey, styleConfig]) => {
-                const styleData = track.styles[styleKey];
-                // ✅ Check for either MP3 url OR YouTube ID
-                if (!styleData || (!styleData.url && !styleData.youtube_id)) return;
+                // ✅ FIXED: Check for 'url' instead of 'audio_url'
+                if (!track.styles[styleKey] || !track.styles[styleKey].url) return;
                 
                 const radius = this.getRadius(styleKey);
                 const x = this.centerX + Math.cos(angle) * radius;
@@ -177,42 +174,26 @@ class WheelCanvas {
                 // Draw glow effect for hovered/active
                 if (isActive || isHovered) {
                     this.ctx.beginPath();
-                    this.ctx.arc(x, y, 32, 0, 2 * Math.PI);
-                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 32);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+                    this.ctx.arc(x, y, 24, 0, 2 * Math.PI);
+                    const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, 24);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
                     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
                     this.ctx.fillStyle = gradient;
                     this.ctx.fill();
                 }
                 
-                // Calculate dot size with 2px minimum spacing guarantee
-                // For 8 tracks, circumference = 2πr, space per segment = 2πr/16
-                // Dot should be smaller than (space - 4px) to ensure 2px gaps on each side
-                const circumference = 2 * Math.PI * radius;
-                const spacePerSegment = circumference / (this.numTracks * 2);
-                const maxDotSize = Math.max(6, Math.min(14, (spacePerSegment - 4) / 2));
-                
-                const dotSize = isActive ? maxDotSize : (isHovered ? maxDotSize * 0.85 : maxDotSize * 0.7);
+                // Draw main point
                 this.ctx.beginPath();
-                this.ctx.arc(x, y, dotSize, 0, 2 * Math.PI);
-                
-                // Create radial gradient from style color (center) to white (edge)
-                const dotGradient = this.ctx.createRadialGradient(x, y, 0, x, y, dotSize);
-                if (isActive) {
-                    dotGradient.addColorStop(0, styleConfig.color);
-                    dotGradient.addColorStop(0.6, styleConfig.color);
-                    dotGradient.addColorStop(1, '#ffffff');
-                } else {
-                    dotGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-                    dotGradient.addColorStop(1, 'rgba(255, 255, 255, 0.7)');
-                }
-                this.ctx.fillStyle = dotGradient;
+                this.ctx.arc(x, y, isActive ? 12 : (isHovered ? 10 : 6), 0, 2 * Math.PI);
+                this.ctx.fillStyle = isActive ? styleConfig.color : (isHovered ? '#ffffff' : 'rgba(255, 255, 255, 0.9)');
                 this.ctx.fill();
                 
-                // Add subtle border
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-                this.ctx.lineWidth = 1;
-                this.ctx.stroke();
+                // Add border for active point
+                if (isActive) {
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+                }
             });
         });
     }
@@ -225,9 +206,6 @@ class WheelCanvas {
         const iconRadius = styleKeys.length > 0 ? 
             this.getRadius(styleKeys[0]) * 1.18 : 
             200;
-        
-        // Icon size: 2.5x for desktop (20 → 50), 1.3x for mobile (20 → 26)
-        const iconSize = this.isMobile ? 26 : 50;
         
         Object.entries(this.albumData.tracks).forEach(([segment, track]) => {
             const segmentNum = parseInt(segment);
@@ -243,7 +221,7 @@ class WheelCanvas {
                 return;
             }
             
-            this.ctx.font = `${iconSize}px Arial`;
+            this.ctx.font = '20px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillStyle = '#ffffff';

@@ -137,7 +137,7 @@ class MusicWheelApp {
             });
         }
         
-        // Generate infinite radial grid
+        // Generate radial grid
         this.generateRadialGrid();
         
         // Volume control
@@ -163,7 +163,7 @@ class MusicWheelApp {
         const grid = document.getElementById('radialGrid');
         if (!grid) return;
         
-        const numLines = 32;  // More lines for infinity effect
+        const numLines = 24;  // More lines for infinity effect
         
         for (let i = 0; i < numLines; i++) {
             const line = document.createElement('div');
@@ -171,8 +171,8 @@ class MusicWheelApp {
             const angle = (i * 360 / numLines);
             line.style.transform = `rotate(${angle}deg)`;
             
-            // Staggered animation delays
-            const randomDelay = (i * 0.05);
+            // Random delay for each line
+            const randomDelay = Math.random() * 2;
             line.style.animationDelay = `${randomDelay}s, ${randomDelay + 1.5}s`;
             
             grid.appendChild(line);
@@ -352,12 +352,9 @@ class MusicWheelApp {
             };
             
             Object.entries(trackData.styles || {}).forEach(([styleKey, styleData]) => {
-                // Support both regular URL and YouTube
-                if (styleData.url || styleData.youtube_id) {
+                if (styleData.url) {
                     converted.tracks[segment].styles[styleKey] = {
-                        url: styleData.url || null,
-                        youtube_id: styleData.youtube_id || null,
-                        audio_type: styleData.audio_type || 'file',
+                        url: styleData.url,
                         lyrics_url: styleData.lyrics_url || null
                     };
                 }
@@ -390,9 +387,8 @@ class MusicWheelApp {
         
         container.innerHTML = this.albumStyles.map((style, idx) => `
             <div class="style-dot" data-style="${style.key}">
-                <div class="style-circle" style="background: ${style.color};">
-                    <span class="style-label">${style.name}</span>
-                </div>
+                <div class="style-circle" style="background: ${style.color};"></div>
+                <div class="style-label">${style.name}</div>
             </div>
         `).join('');
         
@@ -449,27 +445,11 @@ class MusicWheelApp {
         
         // Play audio
         try {
-            if (styleData.audio_type === 'youtube' && styleData.youtube_id) {
-                console.log('🎬 Playing YouTube:', styleData.youtube_id);
-                await this.player.loadYouTube(styleData.youtube_id);
-            } else if (styleData.url) {
-                // Use proxy for R2 files to avoid CORS
-                const audioUrl = styleData.url.includes('r2.dev') 
-                    ? `/api/proxy/audio?url=${encodeURIComponent(styleData.url)}`
-                    : styleData.url;
-                console.log('🎵 Playing file:', audioUrl);
-                await this.player.loadTrack(audioUrl);
-            } else {
-                console.error('❌ No audio source available');
-                this.ui.updateStatus('אין קובץ אודיו זמין', 'error');
-                return;
-            }
-            
+            await this.player.loadTrack(styleData.url);
             await this.player.play();
             this.updatePlayButton(true);
         } catch (error) {
             console.error('Error playing:', error);
-            this.ui.updateStatus('שגיאה בהשמעה', 'error');
         }
     }
     
@@ -499,18 +479,7 @@ class MusicWheelApp {
         const styleData = trackData.styles[newStyle];
         
         try {
-            if (styleData.audio_type === 'youtube' && styleData.youtube_id) {
-                console.log('🎬 Switching to YouTube:', styleData.youtube_id);
-                await this.player.loadYouTube(styleData.youtube_id);
-            } else if (styleData.url) {
-                // Use proxy for R2 files to avoid CORS
-                const audioUrl = styleData.url.includes('r2.dev') 
-                    ? `/api/proxy/audio?url=${encodeURIComponent(styleData.url)}`
-                    : styleData.url;
-                console.log('🎵 Switching to file:', audioUrl);
-                await this.player.loadTrack(audioUrl);
-            }
-            
+            await this.player.loadTrack(styleData.url);
             this.player.seek(currentTime);
             
             if (wasPlaying) {
@@ -552,17 +521,14 @@ class MusicWheelApp {
     updatePlayButton(isPlaying) {
         const playIcon = document.getElementById('playIcon');
         const pauseIcon = document.getElementById('pauseIcon');
-        const centerBtn = document.getElementById('centerPlayBtn');
         
         if (playIcon && pauseIcon) {
             if (isPlaying) {
                 playIcon.style.display = 'none';
                 pauseIcon.style.display = 'block';
-                if (centerBtn) centerBtn.classList.add('playing');
             } else {
                 playIcon.style.display = 'block';
                 pauseIcon.style.display = 'none';
-                if (centerBtn) centerBtn.classList.remove('playing');
             }
         }
     }

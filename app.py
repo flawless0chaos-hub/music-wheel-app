@@ -11,14 +11,6 @@ app.config['UPLOAD_FOLDER'] = 'temp_uploads'
 # Ensure temp upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Add CORS headers to all responses
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
 # Helper function to extract YouTube ID
 def extract_youtube_id(url):
     """Extract YouTube video ID from URL"""
@@ -135,35 +127,6 @@ def init_album():
             'status': 'success',
             'message': f'Album "{album_name}" created successfully',
             'album_id': album_id
-        })
-        
-    except Exception as e:
-        print(f"Error initializing album: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
-
-
-@app.route('/api/album/delete', methods=['POST'])
-def delete_album():
-    """Delete an album from R2 storage"""
-    try:
-        if not storage_manager:
-            return jsonify({'status': 'error', 'message': 'Storage not initialized'}), 500
-        
-        data = request.json
-        album_name = data.get('album')
-        
-        if not album_name:
-            return jsonify({'status': 'error', 'message': 'Album name required'}), 400
-        
-        print(f"\n🗑️ Deleting album: {album_name}")
-        
-        storage_manager.delete_album(album_name)
-        
-        return jsonify({
-            'status': 'success',
-            'message': f'Album "{album_name}" deleted successfully'
         })
         
     except Exception as e:
@@ -400,36 +363,3 @@ if __name__ == '__main__':
     print("\n" + "=" * 50 + "\n")
     
     app.run(debug=debug_mode, host='0.0.0.0', port=port)
-
-# ===============================
-# Audio Proxy for CORS
-# ===============================
-
-@app.route('/api/proxy/audio')
-def proxy_audio():
-    """Proxy audio files from R2 to avoid CORS issues"""
-    try:
-        url = request.args.get('url')
-        if not url:
-            return jsonify({'error': 'No URL provided'}), 400
-        
-        import requests
-        response = requests.get(url, stream=True)
-        
-        def generate():
-            for chunk in response.iter_content(chunk_size=8192):
-                yield chunk
-        
-        return app.response_class(
-            generate(),
-            mimetype='audio/mpeg',
-            headers={
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'audio/mpeg',
-                'Accept-Ranges': 'bytes'
-            }
-        )
-    except Exception as e:
-        print(f"Error proxying audio: {e}")
-        return jsonify({'error': str(e)}), 500
-
